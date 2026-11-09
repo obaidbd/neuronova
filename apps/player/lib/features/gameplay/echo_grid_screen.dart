@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:math';
+
 import 'package:flutter/material.dart';
+
 import '../../app/theme.dart';
 import '../../core/progress_store.dart';
 import '../../game/rules/adaptive.dart';
@@ -91,9 +93,15 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
     );
     final first = widget.store.completedRounds == 0;
     final xp = xpForScore(s, firstCompletion: first || r.perfect);
-    skill.record(RoundRecord(accuracy: r.accuracy, success: r.perfect));
+    if (widget.tierOverride == null) {
+      skill.record(RoundRecord(accuracy: r.accuracy, success: r.perfect));
+    }
     await widget.store.commitRound(
-        roundId: roundId, score: s, xp: xp, skill: skill);
+      roundId: roundId,
+      score: s,
+      xp: xp,
+      skill: skill,
+    );
     if (!mounted) return;
     setState(() {
       result = r;
@@ -127,10 +135,14 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(_instruction(),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontSize: 20, color: NovaColors.textSecondary)),
+                  Text(
+                    _instruction(),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      color: NovaColors.textSecondary,
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   AspectRatio(
                     aspectRatio: 1,
@@ -139,7 +151,9 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
                       mainAxisSpacing: 8,
                       crossAxisSpacing: 8,
                       physics: const NeverScrollableScrollPhysics(),
-                      children: [for (var i = 0; i < size * size; i++) _cell(i)],
+                      children: [
+                        for (var i = 0; i < size * size; i++) _cell(i),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -149,7 +163,8 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
                           ? _submit
                           : null,
                       child: Text(
-                          'Submit (${selected.length}/${puzzle.config.targets})'),
+                        'Submit (${selected.length}/${puzzle.config.targets})',
+                      ),
                     ),
                   if (phase == _Phase.result) _resultPanel(),
                 ],
@@ -162,16 +177,19 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
   }
 
   String _instruction() => switch (phase) {
-        _Phase.preview => widget.tutorial
-            ? 'Watch the glowing tiles…'
-            : 'Remember the glowing tiles',
-        _Phase.recall => widget.tutorial
-            ? 'Now tap the tiles that glowed'
-            : 'Tap the tiles that glowed',
-        _Phase.result => result!.perfect
-            ? 'The gate opens!'
-            : 'Good try — ${result!.hits}/${puzzle.config.targets} correct',
-      };
+    _Phase.preview =>
+      widget.tutorial
+          ? 'Watch the glowing tiles…'
+          : 'Remember the glowing tiles',
+    _Phase.recall =>
+      widget.tutorial
+          ? 'Now tap the tiles that glowed'
+          : 'Tap the tiles that glowed',
+    _Phase.result =>
+      result!.perfect
+          ? 'The gate opens!'
+          : 'Good try — ${result!.hits}/${puzzle.config.targets} correct',
+  };
 
   Widget _cell(int i) {
     final isTarget = puzzle.targets.contains(i);
@@ -220,14 +238,22 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
     );
   }
 
-  Widget _resultPanel() => Column(children: [
-        Text('Score $score  •  +$xpAwarded XP',
-            style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: NovaColors.gold)),
-        const SizedBox(height: 12),
-        Wrap(spacing: 12, runSpacing: 8, alignment: WrapAlignment.center, children: [
+  Widget _resultPanel() => Column(
+    children: [
+      Text(
+        'Score $score  •  +$xpAwarded XP',
+        style: const TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+          color: NovaColors.gold,
+        ),
+      ),
+      const SizedBox(height: 12),
+      Wrap(
+        spacing: 12,
+        runSpacing: 8,
+        alignment: WrapAlignment.center,
+        children: [
           FilledButton(
             onPressed: widget.tutorial
                 ? () => Navigator.of(context).pop(true)
@@ -239,6 +265,8 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Home'),
             ),
-        ]),
-      ]);
+        ],
+      ),
+    ],
+  );
 }

@@ -24,7 +24,11 @@ class EchoGridConfig {
     if (t <= 6) {
       return EchoGridConfig(size: 4, targets: t == 6 ? 6 : 5, previewMs: 3000);
     }
-    return EchoGridConfig(size: 5, targets: t >= 9 ? 8 + (t - 8) : 8, previewMs: 2000);
+    return EchoGridConfig(
+      size: 5,
+      targets: t >= 9 ? 8 + (t - 8) : 8,
+      previewMs: 2000,
+    );
   }
 }
 
@@ -58,15 +62,15 @@ class EchoGridPuzzle {
 
   /// Compares a submission to the target set.
   EchoGridResult evaluate(Set<int> selection) {
-    final valid = selection.every((c) => c >= 0 && c < config.cells) &&
+    final valid =
+        selection.every((c) => c >= 0 && c < config.cells) &&
         selection.length <= config.targets;
     if (!valid) {
       throw ArgumentError('Illegal selection');
     }
     final hits = selection.intersection(targets).length;
     final wrong = selection.length - hits;
-    final accuracy =
-        ((hits - wrong).clamp(0, config.targets)) / config.targets;
+    final accuracy = ((hits - wrong).clamp(0, config.targets)) / config.targets;
     return EchoGridResult(
       hits: hits,
       wrong: wrong,

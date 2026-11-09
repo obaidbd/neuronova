@@ -1,5 +1,7 @@
 import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../game/rules/adaptive.dart';
 
 /// Local guest progress (spec §30). XP is local-only until a server exists.
@@ -15,13 +17,16 @@ class ProgressStore {
 
   int get xp => _prefs.getInt('xp') ?? 0;
   int get novaEnergy => _prefs.getInt('energy') ?? 0;
-  int get bestScore => _prefs.getInt('best_echo_grid') ?? 0;
+  int bestFor(String skillKey) => _prefs.getInt('best_$skillKey') ?? 0;
+  int get bestScore => bestFor('visual_memory');
   int get completedRounds => _prefs.getInt('rounds') ?? 0;
   bool get untimedMode => _prefs.getBool('untimed') ?? false;
   Future<void> setUntimed(bool v) => _prefs.setBool('untimed', v);
 
-  SkillState get memorySkill {
-    final raw = _prefs.getString('skill_visual_memory');
+  SkillState get memorySkill => skillFor('visual_memory');
+
+  SkillState skillFor(String key) {
+    final raw = _prefs.getString('skill_$key');
     if (raw == null) return SkillState();
     try {
       return SkillState.fromJson(jsonDecode(raw) as Map<String, dynamic>);
@@ -36,6 +41,7 @@ class ProgressStore {
     required int score,
     required int xp,
     required SkillState skill,
+    String skillKey = 'visual_memory',
   }) async {
     final done = _prefs.getStringList('committed') ?? <String>[];
     if (done.contains(roundId)) return false;
@@ -45,8 +51,8 @@ class ProgressStore {
     await _prefs.setInt('xp', xp + this.xp);
     await _prefs.setInt('energy', novaEnergy + (score >= 60 ? 10 : 3));
     await _prefs.setInt('rounds', completedRounds + 1);
-    if (score > bestScore) await _prefs.setInt('best_echo_grid', score);
-    await _prefs.setString('skill_visual_memory', jsonEncode(skill.toJson()));
+    if (score > bestFor(skillKey)) await _prefs.setInt('best_$skillKey', score);
+    await _prefs.setString('skill_$skillKey', jsonEncode(skill.toJson()));
     return true;
   }
 }

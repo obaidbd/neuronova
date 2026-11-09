@@ -22,9 +22,9 @@ ThemeData novaTheme() {
     scaffoldBackgroundColor: NovaColors.background,
     useMaterial3: true,
     textTheme: ThemeData.dark().textTheme.apply(
-          bodyColor: NovaColors.text,
-          displayColor: NovaColors.text,
-        ),
+      bodyColor: NovaColors.text,
+      displayColor: NovaColors.text,
+    ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         minimumSize: const Size(160, 52),

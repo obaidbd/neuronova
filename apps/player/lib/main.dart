@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'app/theme.dart';
 import 'core/progress_store.dart';
 import 'features/home/home_screen.dart';
@@ -15,9 +16,9 @@ class NeuroNovaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-        title: 'NeuroNova',
-        debugShowCheckedModeBanner: false,
-        theme: novaTheme(),
-        home: HomeScreen(store: store),
-      );
+    title: 'NeuroNova',
+    debugShowCheckedModeBanner: false,
+    theme: novaTheme(),
+    home: HomeScreen(store: store),
+  );
 }

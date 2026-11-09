@@ -1,6 +1,10 @@
 /// One finished round as seen by the adaptive engine.
 class RoundRecord {
-  const RoundRecord({required this.accuracy, required this.success, this.usedHint = false});
+  const RoundRecord({
+    required this.accuracy,
+    required this.success,
+    this.usedHint = false,
+  });
   final double accuracy;
   final bool success;
   final bool usedHint;
@@ -9,7 +13,7 @@ class RoundRecord {
 /// Per-skill adaptive state (spec §15). Tier changes by at most one.
 class SkillState {
   SkillState({this.tier = 1, List<RoundRecord>? recent})
-      : recent = List.of(recent ?? const []);
+    : recent = List.of(recent ?? const []);
 
   static const minTier = 1;
   static const maxTier = 10;
@@ -43,22 +47,22 @@ class SkillState {
   }
 
   Map<String, dynamic> toJson() => {
-        'tier': tier,
-        'recent': [
-          for (final r in recent)
-            {'a': r.accuracy, 's': r.success, 'h': r.usedHint}
-        ],
-      };
+    'tier': tier,
+    'recent': [
+      for (final r in recent)
+        {'a': r.accuracy, 's': r.success, 'h': r.usedHint},
+    ],
+  };
 
   factory SkillState.fromJson(Map<String, dynamic> j) => SkillState(
-        tier: (j['tier'] as int?) ?? 1,
-        recent: [
-          for (final r in (j['recent'] as List? ?? const []))
-            RoundRecord(
-              accuracy: (r['a'] as num).toDouble(),
-              success: r['s'] as bool,
-              usedHint: r['h'] as bool? ?? false,
-            )
-        ],
-      );
+    tier: (j['tier'] as int?) ?? 1,
+    recent: [
+      for (final r in (j['recent'] as List? ?? const []))
+        RoundRecord(
+          accuracy: (r['a'] as num).toDouble(),
+          success: r['s'] as bool,
+          usedHint: r['h'] as bool? ?? false,
+        ),
+    ],
+  );
 }
