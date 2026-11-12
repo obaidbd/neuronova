@@ -1,0 +1,33 @@
+name: Deploy web to neuronova.muslimit.net
+on:
+  push:
+    branches: [main]
+    paths: ['apps/player/**', '.github/workflows/deploy-web.yml']
+  workflow_dispatch:
+concurrency:
+  group: deploy-web
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable }
+      - working-directory: apps/player
+        run: |
+          flutter pub get
+          flutter test
+          flutter build web --release --base-href "/"
+      - name: Upload to the server
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          rsync -az --delete -e "ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes" \
+            apps/player/build/web/ neuronova@69.62.73.247:htdocs/neuronova.muslimit.net/
