@@ -67,9 +67,9 @@ flutter build web --release
 Upload the contents of `apps/player/build/web/` to the website's document root.
 The deployment workflow uses a root-domain build (`--base-href "/"`).
 
-The CI workflow builds and saves a root-domain `neuronova-web-root` artifact on
-each push/PR. The server deployment workflow runs on pushes to `main` that change
-the player application.
+The CI workflow analyzes, tests and builds the player on each push/PR. The
+server deployment workflow uploads the web build directly on pushes to `main`
+that change the player application, without using GitHub artifact storage.
 
 ## Game library and individual settings
 
