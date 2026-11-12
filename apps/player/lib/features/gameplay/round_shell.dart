@@ -53,6 +53,7 @@ class _RoundShellState extends State<RoundShell> {
   late Stopwatch clock;
   RoundOutcome? outcome;
   int score = 0, xp = 0;
+  int roundNumber = 1;
   int? activeTierOverride;
   bool settingsOpen = false;
   bool finishing = false;
@@ -72,7 +73,9 @@ class _RoundShellState extends State<RoundShell> {
     settingsOpen = false;
     seed = Random().nextInt(1 << 30);
     roundId = '${DateTime.now().microsecondsSinceEpoch}-$seed';
-    clock = Stopwatch()..start();
+    roundNumber = widget.store.roundsFor(widget.kind.skillKey) + 1;
+    clock = Stopwatch();
+    if (widget.kind != GameKind.pathRecall) clock.start();
     setState(() => outcome = null);
   }
 
@@ -163,6 +166,11 @@ class _RoundShellState extends State<RoundShell> {
         );
       case GameKind.pathRecall:
         return PathRecallGame(
+          previewSeconds: widget.store.previewSecondsFor(widget.kind.skillKey),
+          onRecallStarted: () {
+            clock.reset();
+            clock.start();
+          },
           key: key,
           tier: tier,
           seed: seed,
@@ -178,9 +186,27 @@ class _RoundShellState extends State<RoundShell> {
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 52,
-        title: Text(
-          widget.kind.title,
-          style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w600),
+        title: Row(
+          children: [
+            Icon(
+              widget.kind.icon,
+              key: const Key('header-game-icon'),
+              color: widget.kind.accent,
+              size: 22,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                widget.kind.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 21,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
         ),
         backgroundColor: Colors.transparent,
         actions: [
@@ -206,14 +232,26 @@ class _RoundShellState extends State<RoundShell> {
                     skillKey: widget.kind.skillKey,
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    'Lv $tier${activeTierOverride != null ? " · Practice" : ""}',
-                    key: const Key('tier-label'),
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: NovaColors.textSecondary,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        'Round $roundNumber',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: NovaColors.textSecondary,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        'Lv $tier${activeTierOverride != null ? " · Practice" : ""}',
+                        key: const Key('tier-label'),
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: NovaColors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 6),
                   Expanded(

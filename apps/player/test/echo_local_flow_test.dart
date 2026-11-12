@@ -17,37 +17,34 @@ Future<ProgressStore> boot(WidgetTester t) async {
 }
 
 void main() {
-  testWidgets(
-    'setup offers solo continuous, fixed group rounds and 2–4 seats',
-    (t) async {
-      final store = await boot(t);
-      await t.pumpWidget(
-        MaterialApp(
-          theme: novaTheme(),
-          home: EchoSetupScreen(store: store),
-        ),
-      );
-      expect(find.text('Continuous play'), findsOneWidget);
-      await t.tap(find.text('Friends'));
-      await t.pumpAndSettle();
-      expect(find.text('Continuous play'), findsNothing);
-      for (final n in [2, 3, 4]) {
-        await t.tap(find.text('$n players'));
-        await t.pumpAndSettle();
-        expect(
-          find.text('10 rounds per player · ${10 * n} turns total'),
-          findsOneWidget,
-        );
-      }
-      await t.tap(find.text('Computer'));
+  testWidgets('solo is endless; groups choose fixed rounds and 2–4 seats', (
+    t,
+  ) async {
+    final store = await boot(t);
+    await t.pumpWidget(
+      MaterialApp(
+        theme: novaTheme(),
+        home: EchoSetupScreen(store: store),
+      ),
+    );
+    expect(find.text('Continuous play · No round limit'), findsOneWidget);
+    expect(find.byKey(const Key('match-rounds')), findsNothing);
+    await t.tap(find.text('Friends'));
+    await t.pumpAndSettle();
+    expect(find.text('Continuous play · No round limit'), findsNothing);
+    for (final n in [2, 3, 4]) {
+      await t.tap(find.text('$n players'));
       await t.pumpAndSettle();
       expect(
-        find.text('10 rounds per player · 20 turns total'),
+        find.text('10 rounds per player · ${10 * n} turns total'),
         findsOneWidget,
       );
-      expect(t.takeException(), isNull);
-    },
-  );
+    }
+    await t.tap(find.text('Computer'));
+    await t.pumpAndSettle();
+    expect(find.text('10 rounds per player · 20 turns total'), findsOneWidget);
+    expect(t.takeException(), isNull);
+  });
 
   testWidgets(
     'four-player match hides handoff, honors times, scores and finishes',

@@ -18,10 +18,16 @@ class EchoPlayer {
 }
 
 class EchoMatch {
-  EchoMatch({required this.players, this.roundLimit = 10}) {
+  EchoMatch({
+    required this.players,
+    int? roundLimit = 10,
+    bool tutorial = false,
+  }) : roundLimit = players.length == 1 && !players.first.computer && !tutorial
+           ? null
+           : roundLimit {
     if (players.isEmpty ||
         players.length > 4 ||
-        (roundLimit != null && roundLimit! < 1)) {
+        (this.roundLimit != null && this.roundLimit! < 1)) {
       throw ArgumentError('Choose 1–4 players and a positive round limit');
     }
   }

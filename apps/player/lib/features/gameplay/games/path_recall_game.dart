@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 
@@ -12,8 +13,12 @@ class PathRecallGame extends StatefulWidget {
     required this.tier,
     required this.seed,
     required this.onFinished,
+    this.previewSeconds,
+    this.onRecallStarted,
   });
   final int tier, seed;
+  final int? previewSeconds;
+  final VoidCallback? onRecallStarted;
   final OutcomeCallback onFinished;
   @override
   State<PathRecallGame> createState() => _S();
@@ -24,107 +29,195 @@ class _S extends State<PathRecallGame> {
     tier: widget.tier,
     seed: widget.seed,
   );
-  bool previewing = true;
+  bool previewing = true, done = false;
   final List<int> moves = [];
-  Timer? _t;
+  Timer? timer;
 
   @override
   void initState() {
     super.initState();
-    _t = Timer(Duration(milliseconds: p.previewMs), () {
-      if (mounted) setState(() => previewing = false);
-    });
+    if (widget.previewSeconds != 0) {
+      timer = Timer(
+        Duration(
+          milliseconds: widget.previewSeconds == null
+              ? p.previewMs
+              : widget.previewSeconds! * 1000,
+        ),
+        startRecall,
+      );
+    }
+  }
+
+  void startRecall() {
+    if (!mounted || !previewing) return;
+    timer?.cancel();
+    setState(() => previewing = false);
+    widget.onRecallStarted?.call();
   }
 
   @override
   void dispose() {
-    _t?.cancel();
+    timer?.cancel();
     super.dispose();
   }
 
   List<int> get visited => [p.start, ...moves];
 
-  void _tap(int cell) {
-    if (previewing || moves.length >= p.expected.length - 1) return;
-    if (!p.isLegalMove(visited, cell)) return; // walls/jumps rejected
-    setState(() => moves.add(cell));
-    if (moves.length == p.expected.length - 1) {
-      final r = p.evaluate(moves);
-      widget.onFinished(
-        RoundOutcome(
-          accuracy: r.accuracy,
-          perfect: r.perfect,
-          message: r.perfect
-              ? ''
-              : '${r.correct}/${p.expected.length - 1} steps correct',
-        ),
-      );
+  void tapCell(int cell) {
+    if (previewing ||
+        done ||
+        moves.length >= p.expected.length - 1 ||
+        !p.isLegalMove(visited, cell)) {
+      return;
     }
+    setState(() => moves.add(cell));
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final show = previewing ? p.expected : visited;
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          previewing
-              ? 'Memorise the route${p.reverse ? ' (you will walk it backwards)' : ''}'
-              : (p.reverse ? 'Walk the route in reverse' : 'Walk the route'),
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 20, color: NovaColors.textSecondary),
-        ),
-        const SizedBox(height: 16),
-        AspectRatio(
-          aspectRatio: 1,
-          child: GridView.count(
-            crossAxisCount: p.size,
-            mainAxisSpacing: 6,
-            crossAxisSpacing: 6,
-            physics: const NeverScrollableScrollPhysics(),
-            children: [
-              for (var i = 0; i < p.cells; i++) _cell(i, show.indexOf(i)),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        if (!previewing && moves.isNotEmpty)
-          TextButton(
-            key: const Key('undo'),
-            onPressed: () => setState(moves.removeLast),
-            child: const Text('Undo last step'),
-          ),
-      ],
+  void submit() {
+    if (previewing || done || moves.isEmpty) return;
+    done = true;
+    final result = p.evaluate(moves);
+    widget.onFinished(
+      RoundOutcome(
+        accuracy: result.accuracy,
+        perfect: result.perfect,
+        message: result.perfect
+            ? ''
+            : '${result.correct}/${p.expected.length - 1} steps correct',
+      ),
     );
   }
 
-  Widget _cell(int i, int order) {
-    final onPath = order >= 0;
-    final isStart = i == p.start;
-    return GestureDetector(
-      key: Key('cell-$i'),
-      onTap: () => _tap(i),
-      child: Container(
-        decoration: BoxDecoration(
-          color: isStart
-              ? NovaColors.gold
-              : onPath
-              ? NovaColors.blue
-              : NovaColors.surface,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        alignment: Alignment.center,
-        // Step numbers keep the route readable without relying on colour.
-        child: onPath
-            ? Text(
-                isStart ? 'S' : '$order',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  color: NovaColors.background,
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final show = previewing ? p.expected : visited;
+      final availableHeight = constraints.hasBoundedHeight
+          ? constraints.maxHeight
+          : 600.0;
+      final side = min(
+        constraints.maxWidth,
+        max(p.size * 32.0, availableHeight - 175),
+      );
+      return SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              previewing
+                  ? 'Memorise the route${p.reverse ? ' (walk it backwards)' : ''}'
+                  : p.reverse
+                  ? 'Walk the route in reverse'
+                  : 'Walk the route',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 18,
+                color: NovaColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Center(
+              child: SizedBox(
+                width: side,
+                height: side,
+                child: GridView.count(
+                  crossAxisCount: p.size,
+                  mainAxisSpacing: 6,
+                  crossAxisSpacing: 6,
+                  padding: EdgeInsets.zero,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    for (var i = 0; i < p.cells; i++) cell(i, show.indexOf(i)),
+                  ],
                 ),
-              )
-            : null,
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (previewing)
+              if (widget.previewSeconds == 0)
+                FilledButton(
+                  key: const Key('preview-start'),
+                  onPressed: startRecall,
+                  child: const Text('Start'),
+                )
+              else
+                const SizedBox(
+                  height: 48,
+                  child: Center(
+                    child: Text(
+                      'Watch the route…',
+                      style: TextStyle(color: NovaColors.textSecondary),
+                    ),
+                  ),
+                )
+            else
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  TextButton(
+                    key: const Key('undo'),
+                    onPressed: moves.isEmpty || done
+                        ? null
+                        : () => setState(moves.removeLast),
+                    child: const Text('Undo'),
+                  ),
+                  FilledButton(
+                    key: const Key('submit'),
+                    onPressed: moves.isEmpty || done ? null : submit,
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(150, 48),
+                      textStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    child: Text(
+                      'Submit (${moves.length}/${p.expected.length - 1})',
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      );
+    },
+  );
+
+  Widget cell(int i, int order) {
+    final onPath = order >= 0, isStart = i == p.start;
+    return Semantics(
+      key: Key('cell-$i'),
+      onTap: !previewing && !done ? () => tapCell(i) : null,
+      button: true,
+      enabled: !previewing && !done,
+      label:
+          'Cell ${i + 1}${isStart ? ", start" : ""}${previewing && onPath ? ", step $order" : ""}',
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: () => tapCell(i),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isStart
+                ? NovaColors.gold
+                : onPath
+                ? NovaColors.blue
+                : NovaColors.surface,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          alignment: Alignment.center,
+          child: onPath
+              ? Text(
+                  isStart ? 'S' : '$order',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: NovaColors.background,
+                  ),
+                )
+              : null,
+        ),
       ),
     );
   }

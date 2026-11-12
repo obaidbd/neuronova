@@ -2,4 +2,7 @@
 {{flutter_build_config}}
 
 // Updates use fingerprinted entrypoints instead of an offline app-shell cache.
-_flutter.loader.load();
+const releaseAssetBase = "__NEURONOVA_ASSET_BASE__";
+_flutter.loader.load({
+  config: releaseAssetBase.startsWith("__") ? {} : { assetBase: releaseAssetBase }
+});

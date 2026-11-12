@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme.dart';
 import '../../core/game_kind.dart';
+import '../../game/rules/path_recall.dart';
 import '../../core/progress_store.dart';
 import 'game_presentation.dart';
 
@@ -23,7 +24,19 @@ class _GameSettingsScreenState extends State<GameSettingsScreen> {
   late int? tier = widget.store.practiceTierFor(widget.kind.skillKey);
   late bool untimed = widget.store.untimedFor(widget.kind.skillKey);
   bool busy = false;
-  late int previewSeconds = widget.store.echoPreviewSeconds(0);
+  late int previewSeconds = widget.kind == GameKind.echoGrid
+      ? widget.store.echoPreviewSeconds(0)
+      : widget.kind == GameKind.pathRecall
+      ? widget.store.previewSecondsFor(widget.kind.skillKey) ??
+            (PathPuzzle.generate(
+                      tier:
+                          tier ??
+                          widget.store.skillFor(widget.kind.skillKey).tier,
+                      seed: 0,
+                    ).previewMs /
+                    1000)
+                .ceil()
+      : 4;
 
   Future<void> save([
     GameSettingsAction action = GameSettingsAction.saved,
@@ -34,6 +47,12 @@ class _GameSettingsScreenState extends State<GameSettingsScreen> {
       await widget.store.setUntimedFor(widget.kind.skillKey, untimed);
       if (widget.kind == GameKind.echoGrid) {
         await widget.store.setEchoPreviewSeconds(0, previewSeconds);
+      }
+      if (widget.kind == GameKind.pathRecall) {
+        await widget.store.setPreviewSecondsFor(
+          widget.kind.skillKey,
+          previewSeconds,
+        );
       }
       if (mounted) Navigator.of(context).pop(action);
     } catch (_) {
@@ -138,17 +157,18 @@ class _GameSettingsScreenState extends State<GameSettingsScreen> {
                         : (value) => setState(() => untimed = value),
                   ),
                 ),
-                if (game == GameKind.echoGrid) ...[
+                if (game == GameKind.echoGrid ||
+                    game == GameKind.pathRecall) ...[
                   const SizedBox(height: 12),
                   Text(
-                    'Solo preview · ${previewSeconds}s',
+                    'Preview time · ${previewSeconds}s',
                     style: const TextStyle(color: NovaColors.textSecondary),
                   ),
                   Slider(
                     key: const Key('solo-preview'),
-                    min: 1,
+                    min: 0,
                     max: 15,
-                    divisions: 14,
+                    divisions: 15,
                     value: previewSeconds.toDouble(),
                     label: '${previewSeconds}s',
                     onChanged: busy
@@ -156,22 +176,31 @@ class _GameSettingsScreenState extends State<GameSettingsScreen> {
                         : (value) =>
                               setState(() => previewSeconds = value.round()),
                   ),
-                  OutlinedButton.icon(
-                    key: const Key('match-settings'),
-                    onPressed: busy
-                        ? null
-                        : () => save(GameSettingsAction.matchSetup),
-                    icon: const Icon(Icons.group_outlined),
-                    label: const Text('Players & rounds'),
-                  ),
                   const Text(
-                    'Start a new match',
-                    textAlign: TextAlign.center,
+                    '0 = wait until you press Start',
                     style: TextStyle(
                       fontSize: 12,
                       color: NovaColors.textSecondary,
                     ),
                   ),
+                  if (game == GameKind.echoGrid)
+                    OutlinedButton.icon(
+                      key: const Key('match-settings'),
+                      onPressed: busy
+                          ? null
+                          : () => save(GameSettingsAction.matchSetup),
+                      icon: const Icon(Icons.group_outlined),
+                      label: const Text('Players & rounds'),
+                    ),
+                  if (game == GameKind.echoGrid)
+                    const Text(
+                      'Start a new match',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: NovaColors.textSecondary,
+                      ),
+                    ),
                 ],
                 const SizedBox(height: 12),
                 const Divider(height: 1),

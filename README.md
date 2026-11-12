@@ -37,10 +37,10 @@ Open https://neuronova.muslimit.net/. The `Deploy web to neuronova.muslimit.net`
 
 Echo Grid now opens a setup screen (the first-time tutorial is still available).
 Choose Solo, Friends (2–4 players sharing one device, taking turns), or Computer
-(a simulated local opponent). Set 1–50 rounds per player before a match. Solo also
-supports continuous play with no round or score limit and a **Finish run** button.
+(a simulated local opponent). Set 1–50 rounds per player for friends or computer matches. Solo always
+continues without a round or score limit; there is no finish-run button.
 
-Each seat can choose 1–15 seconds of preview time; the setting is saved locally.
+Each seat can choose 0–15 seconds of preview time; the setting is saved locally.
 Home game icons open gameplay directly. Echo Grid starts a solo continuous run;
 its in-game Settings button provides preview controls and **Players & rounds**
 for a new match.
@@ -101,3 +101,17 @@ new HTML loads the matching new application rather than a cached earlier build.
 The bootstrap no longer registers an offline app-shell worker; the HTML retires
 only the worker for this app scope. Local scores, preferences and XP are retained.
 Both CI and server deployment run the release preparation step after building.
+
+## Manual memory previews and endless solo rounds
+
+Echo Grid and Path Recall accept preview time **0** in game settings. The pattern
+or numbered route remains visible until **Start** is pressed; recall scoring time
+starts then. Positive preview times continue to switch automatically. Path Recall
+now has an explicit **Submit** button and Undo, laid out to stay visible on small
+portrait screens. It scores only when the player submits a nonempty route.
+
+Solo Echo Grid ignores any legacy finite round limit and keeps adding rounds and
+points after level 20. Group round limits are unchanged. Each game's round number
+continues from its saved round total. Icons appear next to game titles, and web
+release preparation versions fonts/assets and browser icon URLs as well as scripts
+to avoid the production host's long-lived stale icon cache.

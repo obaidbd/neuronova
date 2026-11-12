@@ -13,9 +13,15 @@ class ProgressStore {
       ProgressStore(await SharedPreferences.getInstance());
 
   int echoPreviewSeconds(int seat) =>
-      (_prefs.getInt('echo_preview_$seat') ?? 4).clamp(1, 15);
+      (_prefs.getInt('echo_preview_$seat') ?? 4).clamp(0, 15);
   Future<void> setEchoPreviewSeconds(int seat, int seconds) async {
-    await _prefs.setInt('echo_preview_$seat', seconds.clamp(1, 15));
+    await _prefs.setInt('echo_preview_$seat', seconds.clamp(0, 15));
+  }
+
+  int? previewSecondsFor(String game) =>
+      _prefs.getInt('preview_$game')?.clamp(0, 15);
+  Future<void> setPreviewSecondsFor(String game, int seconds) async {
+    await _prefs.setInt('preview_$game', seconds.clamp(0, 15));
   }
 
   bool get tutorialDone => _prefs.getBool('tutorialDone') ?? false;

@@ -59,6 +59,7 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
         widget.match ??
         EchoMatch(
           roundLimit: widget.tutorial ? 1 : null,
+          tutorial: widget.tutorial,
           players: [
             EchoPlayer(
               'Player 1',
@@ -73,7 +74,9 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
   void newRound() {
     timer?.cancel();
     player = match.current;
-    playedRound = match.round;
+    playedRound = match.players.length == 1 && !widget.tutorial
+        ? widget.store.roundsFor('visual_memory') + 1
+        : match.round;
     final seed = widget.seed == null
         ? Random().nextInt(1 << 30)
         : widget.seed! + match.turn;
@@ -97,21 +100,25 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
       remaining = player.previewSeconds;
       phase = _Phase.preview;
     });
+    if (remaining == 0) return;
     timer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) return;
       setState(() => remaining--);
-      if (remaining <= 0) {
-        t.cancel();
-        setState(() {
-          phase = _Phase.recall;
-          clock.reset();
-          clock.start();
-        });
-        if (player.computer) {
-          timer = Timer(const Duration(milliseconds: 1400), computerTurn);
-        }
-      }
+      if (remaining <= 0) beginRecall();
     });
+  }
+
+  void beginRecall() {
+    if (phase != _Phase.preview) return;
+    timer?.cancel();
+    setState(() {
+      phase = _Phase.recall;
+      clock.reset();
+      clock.start();
+    });
+    if (player.computer) {
+      timer = Timer(const Duration(milliseconds: 1400), computerTurn);
+    }
   }
 
   void computerTurn() {
@@ -249,7 +256,24 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: Text(widget.tutorial ? 'First Gate' : 'Echo Grid'),
+      title: Row(
+        children: [
+          const Icon(
+            Icons.grid_view,
+            key: Key('header-game-icon'),
+            color: NovaColors.emerald,
+            size: 22,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              widget.tutorial ? 'First Gate' : 'Echo Grid',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
       toolbarHeight: 48,
       backgroundColor: Colors.transparent,
       actions: [
@@ -333,7 +357,7 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
 
   double boardSide(double width) => min(
     width,
-    max(196.0, MediaQuery.sizeOf(context).height - (sharedBoard ? 500 : 370)),
+    max(196.0, MediaQuery.sizeOf(context).height - (sharedBoard ? 500 : 410)),
   );
 
   Widget boardSurface(Widget child) => LayoutBuilder(
@@ -362,13 +386,15 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
     const SizedBox(height: 6),
     Text(
       phase == _Phase.preview
-          ? 'Memorize · ${remaining}s remaining'
+          ? (player.previewSeconds == 0
+                ? 'Take your time · Press Start when ready'
+                : 'Memorize · ${remaining}s remaining')
           : '${puzzle.config.size} × ${puzzle.config.size} · ${puzzle.config.targets} tiles',
       textAlign: TextAlign.center,
       style: const TextStyle(color: NovaColors.gold, fontSize: 13),
     ),
     const SizedBox(height: 10),
-    if (phase == _Phase.preview) ...[
+    if (phase == _Phase.preview && player.previewSeconds > 0) ...[
       LinearProgressIndicator(
         value: remaining / player.previewSeconds,
         color: sharedBoard
@@ -387,6 +413,14 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
         children: [for (var i = 0; i < puzzle.config.cells; i++) cell(i)],
       ),
     ),
+    if (phase == _Phase.preview && player.previewSeconds == 0) ...[
+      const SizedBox(height: 12),
+      FilledButton(
+        key: const Key('preview-start'),
+        onPressed: beginRecall,
+        child: const Text('Start'),
+      ),
+    ],
   ];
 
   Color seatColor(int index) => const [
@@ -556,7 +590,9 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Level ${player.level} · ${player.previewSeconds}s to remember',
+            player.previewSeconds == 0
+                ? 'Level ${player.level} · Manual start'
+                : 'Level ${player.level} · ${player.previewSeconds}s to remember',
             style: const TextStyle(
               fontSize: 12,
               color: NovaColors.textSecondary,
@@ -716,14 +752,6 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
                   : 'Next round',
             ),
           ),
-          if (!widget.tutorial && match.roundLimit == null && match.canEnd)
-            OutlinedButton(
-              onPressed: () {
-                match.end();
-                setState(() => phase = _Phase.finished);
-              },
-              child: const Text('Finish run'),
-            ),
         ],
       ),
     ],

@@ -25,6 +25,18 @@ void main() {
     }
   });
 
+  test('solo ignores a legacy finite round limit and keeps adding points', () {
+    final player = EchoPlayer('Solo');
+    final match = EchoMatch(players: [player], roundLimit: 1);
+    for (var i = 0; i < 250; i++) {
+      match.record(score: 100, perfect: true);
+      expect(match.finished, isFalse);
+    }
+    expect(match.roundLimit, isNull);
+    expect(match.round, 251);
+    expect(player.points, 25000);
+  });
+
   test('completed level outranks points; points break a level tie', () {
     final a = EchoPlayer('A'), b = EchoPlayer('B'), c = EchoPlayer('C');
     final match = EchoMatch(players: [a, b, c], roundLimit: 2);

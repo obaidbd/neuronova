@@ -17,7 +17,6 @@ class _EchoSetupScreenState extends State<EchoSetupScreen> {
   String mode = 'Solo';
   int count = 2;
   int rounds = 10;
-  bool continuous = false;
   bool starting = false;
   late final seconds = List.generate(4, widget.store.echoPreviewSeconds);
   final names = List.generate(
@@ -46,7 +45,7 @@ class _EchoSetupScreenState extends State<EchoSetupScreen> {
       }
       if (!mounted) return;
       final match = EchoMatch(
-        roundLimit: continuous && mode == 'Solo' ? null : rounds,
+        roundLimit: mode == 'Solo' ? null : rounds,
         players: List.generate(
           seats,
           (i) => EchoPlayer(
@@ -111,14 +110,14 @@ class _EchoSetupScreenState extends State<EchoSetupScreen> {
             ],
             const SizedBox(height: 12),
             if (mode == 'Solo')
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Continuous play'),
-                subtitle: const Text('No round limit'),
-                value: continuous,
-                onChanged: (v) => setState(() => continuous = v),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  'Continuous play · No round limit',
+                  style: TextStyle(color: NovaColors.textSecondary),
+                ),
               ),
-            if (!continuous || mode != 'Solo') ...[
+            if (mode != 'Solo') ...[
               Text(
                 '$rounds rounds per player · ${rounds * seats} turns total',
                 key: const Key('round-count'),
@@ -160,7 +159,7 @@ class _EchoSetupScreenState extends State<EchoSetupScreen> {
                         ),
                       const SizedBox(height: 12),
                       Text(
-                        'Preview · ${seconds[i]}s',
+                        'Preview · ${seconds[i]}s (0 = manual)',
                         style: const TextStyle(
                           color: NovaColors.textSecondary,
                           fontSize: 13,
@@ -168,9 +167,9 @@ class _EchoSetupScreenState extends State<EchoSetupScreen> {
                       ),
                       Slider(
                         key: Key('preview-$i'),
-                        min: 1,
+                        min: 0,
                         max: 15,
-                        divisions: 14,
+                        divisions: 15,
                         value: seconds[i].toDouble(),
                         label: '${seconds[i]}s',
                         onChanged: (v) =>
