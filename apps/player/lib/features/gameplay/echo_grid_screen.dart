@@ -725,11 +725,6 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
               },
               child: const Text('Finish run'),
             ),
-          if (!widget.tutorial)
-            OutlinedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Home'),
-            ),
         ],
       ),
     ],
