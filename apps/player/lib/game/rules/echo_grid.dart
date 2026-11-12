@@ -14,10 +14,17 @@ class EchoGridConfig {
 
   int get cells => size * size;
 
-  /// Tier 1-10. Tiers 1..3 beginner, 4..6 intermediate, 7..10 advanced.
+  /// Levels 1–20. Grid size increases from 3×3 to 7×7.
   /// Tier 2/5/8 match the spec's starting configurations.
   factory EchoGridConfig.forTier(int tier) {
-    final t = tier.clamp(1, 10);
+    final t = tier.clamp(1, 20);
+    if (t > 10) {
+      return EchoGridConfig(
+        size: t <= 15 ? 6 : 7,
+        targets: 10 + (t - 10),
+        previewMs: 2000,
+      );
+    }
     if (t <= 3) {
       return EchoGridConfig(size: 3, targets: t == 3 ? 4 : 3, previewMs: 4000);
     }

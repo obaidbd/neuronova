@@ -4,6 +4,7 @@ import '../../app/theme.dart';
 import '../../core/progress_store.dart';
 import '../../core/game_kind.dart';
 import '../gameplay/echo_grid_screen.dart';
+import '../gameplay/echo_setup_screen.dart';
 import '../gameplay/round_shell.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -20,7 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final s = widget.store;
     final route = MaterialPageRoute<void>(
       builder: (_) => k == GameKind.echoGrid
-          ? EchoGridScreen(store: s, tierOverride: testTier)
+          ? EchoSetupScreen(store: s, tierOverride: testTier)
           : RoundShell(kind: k, store: s, tierOverride: testTier),
     );
     await Navigator.of(context).push(route);
@@ -38,7 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (ok == true) await s.setTutorialDone();
     } else {
       await Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => EchoGridScreen(store: s)));
+          .push(MaterialPageRoute(builder: (_) => EchoSetupScreen(store: s)));
     }
     if (mounted) setState(() {});
   }

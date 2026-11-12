@@ -12,6 +12,12 @@ class ProgressStore {
   static Future<ProgressStore> open() async =>
       ProgressStore(await SharedPreferences.getInstance());
 
+  int echoPreviewSeconds(int seat) =>
+      (_prefs.getInt('echo_preview_$seat') ?? 4).clamp(1, 15);
+  Future<void> setEchoPreviewSeconds(int seat, int seconds) async {
+    await _prefs.setInt('echo_preview_$seat', seconds.clamp(1, 15));
+  }
+
   bool get tutorialDone => _prefs.getBool('tutorialDone') ?? false;
   Future<void> setTutorialDone() => _prefs.setBool('tutorialDone', true);
 

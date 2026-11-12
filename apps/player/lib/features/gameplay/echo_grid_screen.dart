@@ -7,9 +7,10 @@ import '../../app/theme.dart';
 import '../../core/progress_store.dart';
 import '../../game/rules/adaptive.dart';
 import '../../game/rules/echo_grid.dart';
+import '../../game/rules/echo_match.dart';
 import '../../game/rules/scoring.dart';
 
-enum _Phase { preview, recall, result }
+enum _Phase { ready, preview, recall, result, finished }
 
 class EchoGridScreen extends StatefulWidget {
   const EchoGridScreen({
@@ -18,26 +19,28 @@ class EchoGridScreen extends StatefulWidget {
     this.tutorial = false,
     this.seed,
     this.tierOverride,
+    this.match,
   });
   final ProgressStore store;
   final bool tutorial;
   final int? seed;
   final int? tierOverride;
-
+  final EchoMatch? match;
   @override
   State<EchoGridScreen> createState() => _EchoGridScreenState();
 }
 
 class _EchoGridScreenState extends State<EchoGridScreen> {
+  late EchoMatch match;
+  late EchoPlayer player;
   late EchoGridPuzzle puzzle;
   late SkillState skill;
-  final Set<int> selected = {};
+  final selected = <int>{};
   _Phase phase = _Phase.preview;
-  Timer? _timer;
-  late Stopwatch _clock;
+  Timer? timer;
+  final clock = Stopwatch();
   EchoGridResult? result;
-  int score = 0;
-  int xpAwarded = 0;
+  int remaining = 4, playedRound = 1, score = 0, xpAwarded = 0;
   bool committing = false;
   late String roundId;
 
@@ -45,138 +48,400 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
   void initState() {
     super.initState();
     skill = widget.store.memorySkill;
-    _newRound();
+    match =
+        widget.match ??
+        EchoMatch(
+          roundLimit: widget.tutorial ? 1 : null,
+          players: [
+            EchoPlayer(
+              'Player 1',
+              previewSeconds: widget.store.echoPreviewSeconds(0),
+              level: widget.tierOverride ?? skill.tier,
+            ),
+          ],
+        );
+    newRound();
   }
 
-  void _newRound() {
-    _timer?.cancel();
-    final seed = widget.seed ?? Random().nextInt(1 << 30);
-    final tier = widget.tutorial ? 1 : (widget.tierOverride ?? skill.tier);
-    puzzle = EchoGridPuzzle.generate(tier: tier, seed: seed);
+  void newRound() {
+    timer?.cancel();
+    player = match.current;
+    playedRound = match.round;
+    final seed = widget.seed == null
+        ? Random().nextInt(1 << 30)
+        : widget.seed! + match.turn;
+    puzzle = EchoGridPuzzle.generate(
+      tier: widget.tutorial ? 1 : widget.tierOverride ?? player.level,
+      seed: seed,
+    );
     roundId = '${DateTime.now().microsecondsSinceEpoch}-$seed';
     selected.clear();
     result = null;
-    phase = _Phase.preview;
-    _timer = Timer(Duration(milliseconds: puzzle.config.previewMs), () {
-      if (!mounted) return;
-      setState(() {
-        phase = _Phase.recall;
-        _clock = Stopwatch()..start();
-      });
-    });
+    score = xpAwarded = 0;
+    committing = false;
+    phase = match.players.length > 1 ? _Phase.ready : _Phase.preview;
+    if (phase == _Phase.preview) startPreview();
     setState(() {});
   }
 
-  void _toggle(int i) {
-    if (phase != _Phase.recall) return;
+  void startPreview() {
+    timer?.cancel();
     setState(() {
-      if (selected.contains(i)) {
-        selected.remove(i);
-      } else if (selected.length < puzzle.config.targets) {
+      remaining = player.previewSeconds;
+      phase = _Phase.preview;
+    });
+    timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return;
+      setState(() => remaining--);
+      if (remaining <= 0) {
+        t.cancel();
+        setState(() {
+          phase = _Phase.recall;
+          clock.reset();
+          clock.start();
+        });
+        if (player.computer) {
+          timer = Timer(const Duration(milliseconds: 1400), computerTurn);
+        }
+      }
+    });
+  }
+
+  void computerTurn() {
+    if (!mounted || phase != _Phase.recall) return;
+    final rng = Random(puzzle.seed ^ 0x5a17);
+    final chance = (0.92 - (player.level - 1) * .025).clamp(.45, .92);
+    final wrong = List.generate(puzzle.config.cells, (i) => i)
+      ..removeWhere(puzzle.targets.contains)
+      ..shuffle(rng);
+    for (final target in puzzle.targets) {
+      selected.add(
+        rng.nextDouble() < chance || wrong.isEmpty
+            ? target
+            : wrong.removeLast(),
+      );
+    }
+    submit();
+  }
+
+  void toggle(int i) {
+    if (phase != _Phase.recall || player.computer || committing) return;
+    setState(() {
+      if (!selected.remove(i) && selected.length < puzzle.config.targets) {
         selected.add(i);
       }
     });
   }
 
-  Future<void> _submit() async {
-    if (committing || selected.length != puzzle.config.targets) return;
-    committing = true;
-    _clock.stop();
+  Future<void> submit() async {
+    if (phase != _Phase.recall ||
+        committing ||
+        selected.length != puzzle.config.targets) {
+      return;
+    }
+    setState(() => committing = true);
+    clock.stop();
     final r = puzzle.evaluate(selected);
-    final untimed = widget.store.untimedMode;
     final s = gameScore(
       accuracy: r.accuracy,
-      timed: !untimed,
+      timed: !widget.store.untimedMode,
       hints: 0,
       targetMs: 8000 + puzzle.config.targets * 1500,
-      actualMs: _clock.elapsedMilliseconds,
+      actualMs: clock.elapsedMilliseconds,
     );
-    final first = widget.store.completedRounds == 0;
-    final xp = xpForScore(s, firstCompletion: first || r.perfect);
-    if (widget.tierOverride == null) {
-      skill.record(RoundRecord(accuracy: r.accuracy, success: r.perfect));
+    final xp = xpForScore(
+      s,
+      firstCompletion: widget.store.completedRounds == 0 || r.perfect,
+    );
+    if (match.players.length == 1) {
+      final updated = SkillState.fromJson(skill.toJson());
+      if (widget.tierOverride == null) {
+        updated.record(RoundRecord(accuracy: r.accuracy, success: r.perfect));
+      }
+      try {
+        await widget.store.commitRound(
+          roundId: roundId,
+          score: s,
+          xp: xp,
+          skill: updated,
+        );
+        skill = updated;
+      } catch (_) {
+        if (!mounted) return;
+        setState(() => committing = false);
+        clock.start();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not save. Please submit again.')),
+        );
+        return;
+      }
     }
-    await widget.store.commitRound(
-      roundId: roundId,
-      score: s,
-      xp: xp,
-      skill: skill,
-    );
+    match.record(score: s, perfect: r.perfect);
     if (!mounted) return;
     setState(() {
       result = r;
       score = s;
-      xpAwarded = xp;
+      xpAwarded = match.players.length == 1 ? xp : 0;
       phase = _Phase.result;
       committing = false;
     });
   }
 
+  void advance() {
+    if (match.finished) {
+      setState(() => phase = _Phase.finished);
+    } else {
+      newRound();
+    }
+  }
+
   @override
   void dispose() {
-    _timer?.cancel();
+    timer?.cancel();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) {
-    final size = puzzle.config.size;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.tutorial ? 'First Gate' : 'Echo Grid'),
-        backgroundColor: Colors.transparent,
-      ),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: Text(widget.tutorial ? 'First Gate' : 'Echo Grid'),
+      toolbarHeight: 48,
+      backgroundColor: Colors.transparent,
+    ),
+    body: SafeArea(
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                scoreboard(),
+                const SizedBox(height: 12),
+                if (phase == _Phase.finished)
+                  finalPanel()
+                else if (phase == _Phase.ready)
+                  readyPanel()
+                else ...[
                   Text(
-                    _instruction(),
+                    instruction(),
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      fontSize: 20,
+                      fontSize: 19,
                       color: NovaColors.textSecondary,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  AspectRatio(
-                    aspectRatio: 1,
-                    child: GridView.count(
-                      crossAxisCount: size,
-                      mainAxisSpacing: 8,
-                      crossAxisSpacing: 8,
-                      physics: const NeverScrollableScrollPhysics(),
-                      children: [
-                        for (var i = 0; i < size * size; i++) _cell(i),
-                      ],
-                    ),
+                  const SizedBox(height: 6),
+                  Text(
+                    phase == _Phase.preview
+                        ? 'Memorize · ${remaining}s remaining'
+                        : '${puzzle.config.size} × ${puzzle.config.size} · ${puzzle.config.targets} tiles',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: NovaColors.gold),
                   ),
-                  const SizedBox(height: 16),
-                  if (phase == _Phase.recall)
-                    FilledButton(
-                      onPressed: selected.length == puzzle.config.targets
-                          ? _submit
-                          : null,
-                      child: Text(
-                        'Submit (${selected.length}/${puzzle.config.targets})',
-                      ),
+                  const SizedBox(height: 10),
+                  if (phase == _Phase.preview) ...[
+                    LinearProgressIndicator(
+                      value: remaining / player.previewSeconds,
+                      color: NovaColors.gold,
                     ),
-                  if (phase == _Phase.result) _resultPanel(),
+                    const SizedBox(height: 10),
+                  ],
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final side = min(
+                        constraints.maxWidth,
+                        max(210.0, MediaQuery.sizeOf(context).height - 370),
+                      );
+                      return Center(
+                        child: SizedBox(
+                          width: side,
+                          height: side,
+                          child: GridView.count(
+                            crossAxisCount: puzzle.config.size,
+                            mainAxisSpacing: 6,
+                            crossAxisSpacing: 6,
+                            padding: EdgeInsets.zero,
+                            physics: const NeverScrollableScrollPhysics(),
+                            children: [
+                              for (var i = 0; i < puzzle.config.cells; i++)
+                                cell(i),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  if (phase == _Phase.recall)
+                    if (player.computer)
+                      const Center(child: Text('Computer is recalling…'))
+                    else
+                      FilledButton(
+                        onPressed:
+                            !committing &&
+                                selected.length == puzzle.config.targets
+                            ? submit
+                            : null,
+                        child: Text(
+                          'Submit (${selected.length}/${puzzle.config.targets})',
+                        ),
+                      ),
+                  if (phase == _Phase.result) resultPanel(),
                 ],
-              ),
+              ],
             ),
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
 
-  String _instruction() => switch (phase) {
+  Widget scoreboard() => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        colors: [Color(0xFF234A63), NovaColors.surface],
+      ),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: NovaColors.emerald.withValues(alpha: .4)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.emoji_events_rounded, color: NovaColors.gold),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                phase == _Phase.finished
+                    ? 'FINAL STANDINGS'
+                    : 'ROUND $playedRound${match.roundLimit == null ? " · CONTINUOUS" : " / ${match.roundLimit}"}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        for (final p in match.players)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(
+              children: [
+                Icon(
+                  p.computer ? Icons.smart_toy_outlined : Icons.person_rounded,
+                  color: p == player
+                      ? NovaColors.emerald
+                      : NovaColors.textSecondary,
+                  size: 20,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    p.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: p == player
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                  ),
+                ),
+                Text(
+                  'Lv ${p.level}',
+                  style: const TextStyle(color: NovaColors.emerald),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '${p.points} pts',
+                  key: Key('points-${match.players.indexOf(p)}'),
+                  style: const TextStyle(
+                    color: NovaColors.gold,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 20,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    ),
+  );
+
+  Widget readyPanel() => Column(
+    children: [
+      const SizedBox(height: 24),
+      Icon(
+        player.computer
+            ? Icons.smart_toy_rounded
+            : Icons.screen_rotation_rounded,
+        size: 56,
+        color: NovaColors.emerald,
+      ),
+      const SizedBox(height: 12),
+      Text(
+        '${player.name}’s turn',
+        style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+      ),
+      const SizedBox(height: 8),
+      Text('Level ${player.level} · ${player.previewSeconds}s to remember'),
+      const SizedBox(height: 8),
+      const Text(
+        'Other players, look away until this turn is finished.',
+        textAlign: TextAlign.center,
+      ),
+      const SizedBox(height: 20),
+      FilledButton(
+        onPressed: startPreview,
+        child: Text(player.computer ? 'Run computer turn' : 'I’m ready'),
+      ),
+    ],
+  );
+
+  Widget finalPanel() => Column(
+    children: [
+      const Icon(Icons.emoji_events_rounded, size: 64, color: NovaColors.gold),
+      const SizedBox(height: 12),
+      Text(
+        match.players.length == 1
+            ? 'Great run, ${match.winners.first.name}!'
+            : '${match.winners.map((p) => p.name).join(" & ")} ${match.winners.length == 1 ? "wins!" : "tie!"}',
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+      ),
+      const SizedBox(height: 12),
+      for (final p in match.standings)
+        ListTile(
+          title: Text(p.name),
+          subtitle: Text(
+            'Highest completed level ${p.reachedLevel} · ${p.rounds} rounds',
+          ),
+          trailing: Text(
+            '${p.points} pts',
+            style: const TextStyle(
+              color: NovaColors.gold,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      const SizedBox(height: 16),
+      FilledButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: const Text('Back to setup'),
+      ),
+    ],
+  );
+
+  String instruction() => switch (phase) {
+    _Phase.ready => 'Ready?',
+    _Phase.finished => 'Match complete',
     _Phase.preview =>
       widget.tutorial
           ? 'Watch the glowing tiles…'
@@ -191,57 +456,61 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
           : 'Good try — ${result!.hits}/${puzzle.config.targets} correct',
   };
 
-  Widget _cell(int i) {
-    final isTarget = puzzle.targets.contains(i);
-    final isSel = selected.contains(i);
+  Widget cell(int i) {
+    final target = puzzle.targets.contains(i), chosen = selected.contains(i);
     Color color = NovaColors.surface;
     IconData? icon;
     String label = 'Tile ${i + 1}';
-    if (phase == _Phase.preview && isTarget) {
+    if (phase == _Phase.preview && target) {
       color = NovaColors.gold;
       icon = Icons.star;
       label += ', glowing';
-    } else if (phase == _Phase.recall && isSel) {
+    } else if (phase == _Phase.recall && chosen) {
       color = NovaColors.blue;
       icon = Icons.check;
       label += ', selected';
     } else if (phase == _Phase.result) {
-      if (isTarget && isSel) {
+      if (target && chosen) {
         color = NovaColors.emerald;
         icon = Icons.check;
-      } else if (isTarget) {
+      } else if (target) {
         color = NovaColors.gold;
         icon = Icons.star;
-      } else if (isSel) {
+      } else if (chosen) {
         color = NovaColors.danger;
         icon = Icons.close;
       }
     }
-    // Colour-independent cue: every state also has an icon.
     return Semantics(
+      key: Key('tile-$i'),
       button: true,
       label: label,
-      child: GestureDetector(
-        onTap: () => _toggle(i),
+      selected: chosen,
+      enabled: phase == _Phase.recall && !player.computer,
+      child: InkWell(
+        onTap: phase == _Phase.recall && !player.computer
+            ? () => toggle(i)
+            : null,
+        borderRadius: BorderRadius.circular(12),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: NovaColors.blue.withValues(alpha: 0.25)),
+            border: Border.all(color: NovaColors.blue.withValues(alpha: .25)),
           ),
           child: icon == null
               ? null
-              : Icon(icon, color: NovaColors.background, size: 28),
+              : Icon(icon, color: NovaColors.background, size: 26),
         ),
       ),
     );
   }
 
-  Widget _resultPanel() => Column(
+  Widget resultPanel() => Column(
     children: [
       Text(
-        'Score $score  •  +$xpAwarded XP',
+        'Score $score${xpAwarded > 0 ? "  •  +$xpAwarded XP" : ""}',
         style: const TextStyle(
           fontSize: 22,
           fontWeight: FontWeight.w700,
@@ -257,9 +526,25 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
           FilledButton(
             onPressed: widget.tutorial
                 ? () => Navigator.of(context).pop(true)
-                : _newRound,
-            child: Text(widget.tutorial ? 'Continue' : 'Next round'),
+                : advance,
+            child: Text(
+              widget.tutorial
+                  ? 'Continue'
+                  : match.finished
+                  ? 'View results'
+                  : match.players.length > 1
+                  ? 'Next player'
+                  : 'Next round',
+            ),
           ),
+          if (!widget.tutorial && match.roundLimit == null && match.canEnd)
+            OutlinedButton(
+              onPressed: () {
+                match.end();
+                setState(() => phase = _Phase.finished);
+              },
+              child: const Text('Finish run'),
+            ),
           if (!widget.tutorial)
             OutlinedButton(
               onPressed: () => Navigator.of(context).pop(),
