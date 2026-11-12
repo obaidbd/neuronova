@@ -74,9 +74,9 @@ that change the player application, without using GitHub artifact storage.
 
 ## Game library and individual settings
 
-The home screen has six responsive game cards with skill categories and personal
-best scores. Each card opens that game's details, instructions and settings before
-starting gameplay. Adaptive or fixed practice difficulty and relaxed scoring are
+The home screen has six compact, icon-only game cards. Tooltips and accessible
+labels identify each game; mobile shows three cards per row. Each card opens concise game settings before starting gameplay. Instructions
+are available in a collapsed **How to play** section. Adaptive or fixed practice difficulty and relaxed scoring are
 saved separately for each game when you start it. Practice preserves saved skill
 progress; relaxed scoring removes the speed bonus without changing preview times.
 Echo Grid then opens its existing player, round and preview-time setup.

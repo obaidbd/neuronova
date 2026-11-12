@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/progress_store.dart';
+import '../../app/theme.dart';
 import '../../game/rules/echo_match.dart';
 import 'echo_grid_screen.dart';
 
@@ -76,22 +77,13 @@ class _EchoSetupScreenState extends State<EchoSetupScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Echo Grid · Set up')),
+    appBar: AppBar(title: const Text('Match settings')),
     body: Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 560),
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            const Text(
-              'Make it your game',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Remember the tiles, collect points, and climb to level 20.',
-            ),
-            const SizedBox(height: 16),
             Wrap(
               spacing: 8,
               children: [
@@ -105,7 +97,6 @@ class _EchoSetupScreenState extends State<EchoSetupScreen> {
             ),
             if (mode == 'Friends') ...[
               const SizedBox(height: 12),
-              const Text('Players on this device'),
               Wrap(
                 spacing: 8,
                 children: [
@@ -117,18 +108,13 @@ class _EchoSetupScreenState extends State<EchoSetupScreen> {
                     ),
                 ],
               ),
-              const Text(
-                'Take turns. Pass the device before revealing each new pattern.',
-              ),
             ],
             const SizedBox(height: 12),
             if (mode == 'Solo')
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Continuous play'),
-                subtitle: const Text(
-                  'Keep going for your highest score. Finish after any round.',
-                ),
+                subtitle: const Text('No round limit'),
                 value: continuous,
                 onChanged: (v) => setState(() => continuous = v),
               ),
@@ -147,28 +133,39 @@ class _EchoSetupScreenState extends State<EchoSetupScreen> {
                 onChanged: (v) => setState(() => rounds = v.round()),
               ),
             ],
-            const Text(
-              'Highest completed level wins; points break a tie. Equal results share the win.',
-            ),
             const SizedBox(height: 12),
             for (var i = 0; i < seats; i++)
               Card(
+                color: NovaColors.surface,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                margin: const EdgeInsets.only(bottom: 12),
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (mode == 'Computer' && i == 1)
-                        const Text('Computer · simulated local opponent')
+                        const Text('Computer')
                       else
                         TextField(
                           controller: names[i],
                           maxLength: 20,
                           decoration: InputDecoration(
-                            labelText: 'Player ${i + 1} name',
+                            labelText: 'Player ${i + 1}',
+                            counterText: '',
                           ),
                         ),
-                      Text('Remember time: ${seconds[i]} seconds'),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Preview · ${seconds[i]}s',
+                        style: const TextStyle(
+                          color: NovaColors.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
                       Slider(
                         key: Key('preview-$i'),
                         min: 1,

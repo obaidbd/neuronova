@@ -29,7 +29,7 @@ void main() {
         await t.pumpAndSettle();
         expect(find.byType(GameDetailsScreen), findsOneWidget);
         expect(find.text('How to play'), findsOneWidget);
-        expect(find.text(game.title), findsNWidgets(2));
+        expect(find.text(game.title), findsOneWidget);
         expect(store.completedRounds, 0);
         await t.pageBack();
         await t.pumpAndSettle();
