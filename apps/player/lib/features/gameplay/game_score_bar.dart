@@ -8,35 +8,26 @@ class GameScoreBar extends StatelessWidget {
   final ProgressStore store;
   final String skillKey;
   @override
-  Widget build(BuildContext context) => Container(
-    key: const Key('game-score-bar'),
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-    decoration: BoxDecoration(
-      color: NovaColors.surface,
-      borderRadius: BorderRadius.circular(16),
-    ),
-    child: Wrap(
-      alignment: WrapAlignment.spaceBetween,
-      spacing: 16,
-      runSpacing: 6,
-      children: [
-        Text(
-          'Score ${store.pointsFor(skillKey)}',
-          key: const Key('game-total-score'),
-          style: const TextStyle(
-            color: NovaColors.gold,
-            fontWeight: FontWeight.w700,
-          ),
+  Widget build(BuildContext context) => Semantics(
+    label: '${store.pointsFor(skillKey)} points',
+    excludeSemantics: true,
+    child: Container(
+      key: const Key('game-score-bar'),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: NovaColors.surface,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        '${store.pointsFor(skillKey)}',
+        key: const Key('game-total-score'),
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: NovaColors.gold,
+          fontSize: 23,
+          fontWeight: FontWeight.w800,
         ),
-        Text(
-          'Best ${store.bestFor(skillKey)}',
-          style: const TextStyle(color: NovaColors.textSecondary),
-        ),
-        Text(
-          '${store.xpFor(skillKey)} XP',
-          style: const TextStyle(color: NovaColors.emerald),
-        ),
-      ],
+      ),
     ),
   );
 }

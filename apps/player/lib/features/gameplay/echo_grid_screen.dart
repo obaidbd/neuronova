@@ -44,7 +44,7 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
   Timer? timer;
   final clock = Stopwatch();
   EchoGridResult? result;
-  int remaining = 4, playedRound = 1, score = 0, xpAwarded = 0;
+  int remaining = 4, playedRound = 1, score = 0;
   bool committing = false;
   late String roundId;
   int? activeTierOverride;
@@ -64,7 +64,7 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
             EchoPlayer(
               'Player 1',
               previewSeconds: widget.store.echoPreviewSeconds(0),
-              level: activeTierOverride ?? skill.tier,
+              level: widget.store.levelFor('visual_memory'),
             ),
           ],
         );
@@ -87,7 +87,7 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
     roundId = '${DateTime.now().microsecondsSinceEpoch}-$seed';
     selected.clear();
     result = null;
-    score = xpAwarded = 0;
+    score = 0;
     committing = false;
     phase = match.players.length > 1 ? _Phase.ready : _Phase.preview;
     if (phase == _Phase.preview) startPreview();
@@ -163,10 +163,6 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
       targetMs: 8000 + puzzle.config.targets * 1500,
       actualMs: clock.elapsedMilliseconds,
     );
-    final xp = xpForScore(
-      s,
-      firstCompletion: widget.store.completedRounds == 0 || r.perfect,
-    );
     if (match.players.length == 1) {
       final updated = SkillState.fromJson(skill.toJson());
       if (activeTierOverride == null) {
@@ -176,7 +172,8 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
         await widget.store.commitRound(
           roundId: roundId,
           score: s,
-          xp: xp,
+          xp: 0,
+          levelUp: r.perfect,
           skill: updated,
         );
         skill = updated;
@@ -195,7 +192,6 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
     setState(() {
       result = r;
       score = s;
-      xpAwarded = match.players.length == 1 ? xp : 0;
       phase = _Phase.result;
       committing = false;
     });
@@ -521,7 +517,7 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    '${seat.points} pts',
+                    '${seat.points}',
                     key: Key('points-$index'),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -639,7 +635,7 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
             'Highest completed level ${p.reachedLevel} · ${p.rounds} rounds',
           ),
           trailing: Text(
-            '${p.points} pts',
+            '${p.points}',
             style: const TextStyle(
               color: NovaColors.gold,
               fontWeight: FontWeight.bold,
@@ -725,7 +721,7 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
   Widget resultPanel() => Column(
     children: [
       Text(
-        'Score $score${xpAwarded > 0 ? "  •  +$xpAwarded XP" : ""}',
+        '$score',
         style: const TextStyle(
           fontSize: 22,
           fontWeight: FontWeight.w700,

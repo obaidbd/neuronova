@@ -36,6 +36,11 @@ class ProgressStore {
         0,
         maxRoundScore,
       );
+  int levelFor(String game) {
+    final value = _prefs.getInt('level_$game') ?? skillFor(game).tier;
+    return value < 1 ? 1 : value;
+  }
+
   int pointsFor(String game) => _prefs.getInt('points_$game') ?? 0;
   int xpFor(String game) => _prefs.getInt('xp_$game') ?? 0;
   int roundsFor(String game) => _prefs.getInt('rounds_$game') ?? 0;
@@ -82,7 +87,9 @@ class ProgressStore {
     required int xp,
     required SkillState skill,
     String skillKey = 'visual_memory',
+    bool levelUp = false,
   }) async {
+    final previousLevel = levelFor(skillKey);
     final awardedScore = score.clamp(0, maxRoundScore);
     final done = _prefs.getStringList('committed') ?? <String>[];
     if (done.contains(roundId)) return false;
@@ -95,6 +102,7 @@ class ProgressStore {
     await _prefs.setInt('points_$skillKey', pointsFor(skillKey) + awardedScore);
     await _prefs.setInt('xp_$skillKey', xpFor(skillKey) + xp);
     await _prefs.setInt('rounds_$skillKey', roundsFor(skillKey) + 1);
+    await _prefs.setInt('level_$skillKey', previousLevel + (levelUp ? 1 : 0));
     if (awardedScore > bestFor(skillKey)) {
       await _prefs.setInt('best_points_$skillKey', awardedScore);
     }

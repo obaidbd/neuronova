@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:neuronova_player/core/game_kind.dart';
+import 'package:neuronova_player/game/rules/difficulty.dart';
 import 'package:neuronova_player/core/progress_store.dart';
 import 'package:neuronova_player/features/gameplay/round_shell.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,13 +23,13 @@ void main() {
           ),
         );
         await t.pump(const Duration(milliseconds: 50));
-        expect(find.text('Lv $tier · Practice'), findsOneWidget);
+        expect(find.text('Lv 1 · ${difficultyName(tier)}'), findsOneWidget);
         await t.pumpWidget(const SizedBox()); // dispose timers
       }
     });
   }
 
-  testWidgets('Number Forge: a tap finishes the round and commits XP once', (
+  testWidgets('Number Forge: a tap completes one round using points only', (
     t,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -45,6 +46,8 @@ void main() {
     await t.pumpAndSettle();
     expect(find.byKey(const Key('result-score')), findsOneWidget);
     expect(store.completedRounds, 1);
+    expect(store.xp, 0);
+    expect(find.textContaining('XP'), findsNothing);
     // test-mode override must not change the real skill tier
     expect(store.skillFor('number_reasoning').recent.length, 1);
   });

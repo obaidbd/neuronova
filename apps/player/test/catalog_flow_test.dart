@@ -61,11 +61,11 @@ void main() {
       await t.tap(find.byKey(const Key('game-difficulty')));
       await t.pumpAndSettle();
       await t.scrollUntilVisible(
-        find.text('Practice · level 8').last,
+        find.text('Hard').last,
         200,
         scrollable: find.byType(Scrollable).last,
       );
-      await t.tap(find.text('Practice · level 8').last);
+      await t.tap(find.text('Hard').last);
       await t.pumpAndSettle();
       final relaxed = find.byKey(const Key('game-untimed'));
       await t.ensureVisible(relaxed);
@@ -76,7 +76,7 @@ void main() {
       await t.tap(save);
       await t.pumpAndSettle();
       expect(find.byType(GameSettingsScreen), findsNothing);
-      expect(find.text('Lv 8 · Practice'), findsOneWidget);
+      expect(find.text('Lv 1 · Hard'), findsOneWidget);
       final saved = await ProgressStore.open();
       expect(saved.practiceTierFor('number_reasoning'), 8);
       expect(saved.untimedFor('number_reasoning'), isTrue);

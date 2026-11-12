@@ -35,6 +35,7 @@ void main() {
     expect(match.roundLimit, isNull);
     expect(match.round, 251);
     expect(player.points, 2500);
+    expect(player.level, 251);
   });
 
   test('completed level outranks points; points break a level tie', () {
@@ -50,22 +51,19 @@ void main() {
     expect(match.winners, [a]);
   });
 
-  test(
-    'continuous play has no round cap and difficulty stays within bounds',
-    () {
-      final player = EchoPlayer('Solo');
-      final match = EchoMatch(players: [player], roundLimit: null);
-      for (var i = 0; i < 150; i++) {
-        match.record(score: 10, perfect: true);
-        expect(match.finished, isFalse);
-      }
-      expect(player.points, 1500);
-      expect(player.level, 20);
-      expect(player.reachedLevel, 20);
-      match.end();
-      expect(match.finished, isTrue);
-    },
-  );
+  test('continuous play has no round or level cap', () {
+    final player = EchoPlayer('Solo');
+    final match = EchoMatch(players: [player], roundLimit: null);
+    for (var i = 0; i < 150; i++) {
+      match.record(score: 10, perfect: true);
+      expect(match.finished, isFalse);
+    }
+    expect(player.points, 1500);
+    expect(player.level, 151);
+    expect(player.reachedLevel, 150);
+    match.end();
+    expect(match.finished, isTrue);
+  });
 
   test(
     'grids and targets grow through all 20 levels, generated sets stay valid',

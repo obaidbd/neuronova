@@ -48,7 +48,10 @@ void main() {
       await t.tap(find.text('Next round'));
       await t.pumpAndSettle();
       expect(find.text('Round 2 · Continuous'), findsOneWidget);
-      expect(find.text('Score 10'), findsOneWidget);
+      expect(
+        t.widget<Text>(find.byKey(const Key('game-total-score'))).data,
+        '10',
+      );
       expect(find.byKey(const Key('preview-start')), findsOneWidget);
       expect(find.byKey(const Key('header-game-icon')), findsOneWidget);
       expect(t.takeException(), isNull);

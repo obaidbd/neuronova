@@ -15,11 +15,11 @@
 | Word Quest | vocabulary (EN/বাংলা/العربية) | one correct picture; starter vocab marked `draft` |
 | Path Recall | spatial memory | self-avoiding route, legal-move checks, optional reverse mode |
 
-Also: design system, guest-first flow, tutorial, per-skill adaptive tiers, scoring (timed/untimed), idempotent local XP commits, untimed accessible mode.
+Also: design system, guest-first flow, tutorial, per-skill adaptive tiers, scoring (timed/untimed), idempotent local point commits, untimed accessible mode.
 
 **Testing aid:** the home screen has a *Difficulty* dropdown (Adaptive or Test tier 1-10). Test tiers never change your saved skill.
 
-Not built yet: chapters/missions (Phase 4), Daily Challenge, Supabase backend and server-side validation, admin console, sharing, Flame scenes. XP is local-only and can be edited on the client. Arabic/Bengali vocabulary is a 12-item draft and needs human review; Arabic glyph rendering has not been checked on real devices.
+Not built yet: chapters/missions (Phase 4), Daily Challenge, Supabase backend and server-side validation, admin console, sharing, Flame scenes. Scores are local-only and can be edited on the client. Arabic/Bengali vocabulary is a 12-item draft and needs human review; Arabic glyph rendering has not been checked on real devices.
 
 ## Run
 ```
@@ -46,9 +46,9 @@ its in-game Settings button provides preview controls and **Players & rounds**
 for a new match.
 A ready screen hides the next pattern while the device changes hands. Each
 perfect answer advances that player's level; a miss keeps the current level.
-Difficulty grows through 20 levels, from 3×3 to 7×7 and up to 20 target tiles;
-continuous play keeps running at level 20. The existing home-screen test-tier
-option fixes puzzle difficulty for testing.
+Puzzle configurations grow from 3×3 to 7×7 with up to 20 target tiles. Player
+levels continue beyond 20; board size stays bounded for readability. The game
+settings offer Auto, Easy, Normal and Hard difficulty presets.
 
 Player panels show cumulative match points and current levels. Shared-device
 matches place four players at four corners, three players at three corners, or
@@ -88,8 +88,8 @@ an unfinished round restarts so memory previews are not lost while in settings.
 Completed results and awarded points are retained. Echo Grid's settings also offer
 solo preview time and a player/round setup for starting a new match.
 
-Each game shows its own total score, best score and XP. New round totals are
-tracked separately by game; old best scores and legacy global XP are preserved.
+Each game shows its own point total as a number. Round totals are tracked
+separately by game; old best scores and legacy XP remain stored but hidden.
 Earlier round totals cannot be reconstructed from the old aggregate data.
 Shared-device Echo Grid matches retain their independent per-player match scores.
 
@@ -118,8 +118,18 @@ to avoid the production host's long-lived stale icon cache.
 
 ## Scoring pace
 
-New rounds award **0–10 points** and at most **2 XP**. Accuracy earns the points;
+New rounds award **0–10 points**, with no separate XP reward. Accuracy earns the points;
 speed can only modify an accurate answer, so a completely wrong answer earns
-zero points and XP. Hints reduce rewards. Group matches use the same point cap.
+zero points. Hints reduce rewards. Group matches use the same point cap.
 Existing accumulated points and XP are retained. Legacy per-round best scores
 are displayed on the new ten-point scale without deleting their original values.
+
+## Points-only display and endless player levels
+
+Gameplay and results show the point number without XP, best-score or accuracy
+panels. New gameplay awards points only; legacy XP values are retained but hidden.
+Successful solo rounds raise a separately saved player level with no configured
+upper bound. Incorrect rounds and difficulty changes do not reduce that level.
+The settings offer **Auto, Easy, Normal, Hard**. Auto keeps adaptive puzzle
+difficulty; the other choices use a fixed preset without capping player levels.
+Puzzle generators keep their existing safe bounds for screen size and content.

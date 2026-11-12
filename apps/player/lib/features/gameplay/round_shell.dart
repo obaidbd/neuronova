@@ -10,6 +10,7 @@ import 'game_score_bar.dart';
 import '../../core/progress_store.dart';
 import '../../game/rules/adaptive.dart';
 import '../../game/rules/scoring.dart';
+import '../../game/rules/difficulty.dart';
 import 'games/focus_dash_game.dart';
 import 'games/number_forge_game.dart';
 import 'games/path_recall_game.dart';
@@ -52,7 +53,8 @@ class _RoundShellState extends State<RoundShell> {
   late String roundId;
   late Stopwatch clock;
   RoundOutcome? outcome;
-  int score = 0, xp = 0;
+  int score = 0;
+  late int playerLevel;
   int roundNumber = 1;
   int? activeTierOverride;
   bool settingsOpen = false;
@@ -70,6 +72,7 @@ class _RoundShellState extends State<RoundShell> {
 
   void _next() {
     tier = activeTierOverride ?? skill.tier;
+    playerLevel = widget.store.levelFor(widget.kind.skillKey);
     settingsOpen = false;
     seed = Random().nextInt(1 << 30);
     roundId = '${DateTime.now().microsecondsSinceEpoch}-$seed';
@@ -91,7 +94,6 @@ class _RoundShellState extends State<RoundShell> {
       targetMs: widget.kind.targetMs(tier),
       actualMs: clock.elapsedMilliseconds,
     );
-    final x = xpForScore(s, firstCompletion: o.perfect);
     // Manual tier override is test mode: it never changes the real skill.
     if (activeTierOverride == null) {
       skill.record(RoundRecord(accuracy: o.accuracy, success: o.perfect));
@@ -99,7 +101,8 @@ class _RoundShellState extends State<RoundShell> {
     await widget.store.commitRound(
       roundId: roundId,
       score: s,
-      xp: x,
+      xp: 0,
+      levelUp: o.perfect,
       skill: skill,
       skillKey: widget.kind.skillKey,
     );
@@ -108,7 +111,7 @@ class _RoundShellState extends State<RoundShell> {
       finishing = false;
       outcome = o;
       score = s;
-      xp = x;
+      playerLevel = widget.store.levelFor(widget.kind.skillKey);
     });
   }
 
@@ -243,7 +246,7 @@ class _RoundShellState extends State<RoundShell> {
                       ),
                       const Spacer(),
                       Text(
-                        'Lv $tier${activeTierOverride != null ? " · Practice" : ""}',
+                        'Lv $playerLevel · ${difficultyName(activeTierOverride)}',
                         key: const Key('tier-label'),
                         textAlign: TextAlign.right,
                         style: const TextStyle(
@@ -271,10 +274,9 @@ class _RoundShellState extends State<RoundShell> {
   Widget _result() {
     final o = outcome!;
     final accent = o.perfect ? widget.kind.accent : NovaColors.gold;
-    final accuracy = (o.accuracy.clamp(0.0, 1.0) * 100).round();
     return SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.only(top: 20, bottom: 20),
+        padding: const EdgeInsets.symmetric(vertical: 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -331,97 +333,18 @@ class _RoundShellState extends State<RoundShell> {
                     ),
                   const SizedBox(height: 28),
                   Semantics(
-                    label: 'Score $score out of $maxRoundScore',
+                    label: '$score points',
                     excludeSemantics: true,
-                    child: Column(
-                      children: [
-                        Text(
-                          '$score',
-                          key: const Key('result-score'),
-                          style: TextStyle(
-                            color: accent,
-                            fontSize: 68,
-                            height: 1.05,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -2,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'POINTS',
-                          style: TextStyle(
-                            fontSize: 10,
-                            letterSpacing: 2,
-                            color: NovaColors.textSecondary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 15,
-                      horizontal: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: NovaColors.background.withValues(alpha: .45),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            children: [
-                              Text(
-                                '$accuracy%',
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              const Text(
-                                'Accuracy',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: NovaColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          width: 1,
-                          height: 32,
-                          color: NovaColors.textSecondary.withValues(
-                            alpha: .15,
-                          ),
-                        ),
-                        Expanded(
-                          child: Column(
-                            children: [
-                              Text(
-                                '+$xp XP',
-                                style: const TextStyle(
-                                  color: NovaColors.gold,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              const Text(
-                                'Earned',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: NovaColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      '$score',
+                      key: const Key('result-score'),
+                      style: TextStyle(
+                        color: accent,
+                        fontSize: 68,
+                        height: 1.05,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -2,
+                      ),
                     ),
                   ),
                 ],

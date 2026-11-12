@@ -53,7 +53,7 @@ class EchoMatch {
     current.rounds++;
     if (perfect) {
       current.reachedLevel = max(current.reachedLevel, current.level);
-      current.level = min(20, current.level + 1);
+      current.level++;
     }
     turn++;
   }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/theme.dart';
 import '../../core/game_kind.dart';
 import '../../game/rules/path_recall.dart';
+import '../../game/rules/difficulty.dart';
 import '../../core/progress_store.dart';
 import 'game_presentation.dart';
 
@@ -21,7 +22,9 @@ class GameSettingsScreen extends StatefulWidget {
 }
 
 class _GameSettingsScreenState extends State<GameSettingsScreen> {
-  late int? tier = widget.store.practiceTierFor(widget.kind.skillKey);
+  late int? tier = difficultyPreset(
+    widget.store.practiceTierFor(widget.kind.skillKey),
+  );
   late bool untimed = widget.store.untimedFor(widget.kind.skillKey);
   bool busy = false;
   late int previewSeconds = widget.kind == GameKind.echoGrid
@@ -103,11 +106,6 @@ class _GameSettingsScreenState extends State<GameSettingsScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Best ${widget.store.bestFor(game.skillKey)}',
-                      style: TextStyle(color: game.accent, fontSize: 12),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 28),
@@ -119,13 +117,11 @@ class _GameSettingsScreenState extends State<GameSettingsScreen> {
                     labelText: 'Difficulty',
                     border: OutlineInputBorder(),
                   ),
-                  items: [
-                    const DropdownMenuItem(value: 0, child: Text('Adaptive')),
-                    for (var i = 1; i <= 10; i++)
-                      DropdownMenuItem(
-                        value: i,
-                        child: Text('Practice · level $i'),
-                      ),
+                  items: const [
+                    DropdownMenuItem(value: 0, child: Text('Auto')),
+                    DropdownMenuItem(value: 2, child: Text('Easy')),
+                    DropdownMenuItem(value: 5, child: Text('Normal')),
+                    DropdownMenuItem(value: 8, child: Text('Hard')),
                   ],
                   onChanged: busy
                       ? null
@@ -136,7 +132,7 @@ class _GameSettingsScreenState extends State<GameSettingsScreen> {
                   const Padding(
                     padding: EdgeInsets.only(top: 8),
                     child: Text(
-                      'Practice keeps your saved skill unchanged.',
+                      'Your level keeps growing at this difficulty.',
                       style: TextStyle(
                         fontSize: 12,
                         color: NovaColors.textSecondary,

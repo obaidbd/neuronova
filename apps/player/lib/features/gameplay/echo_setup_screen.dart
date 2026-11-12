@@ -56,7 +56,7 @@ class _EchoSetupScreenState extends State<EchoSetupScreen> {
                 : names[i].text.trim(),
             computer: mode == 'Computer' && i == 1,
             previewSeconds: seconds[i],
-            level: widget.tierOverride ?? 1,
+            level: mode == 'Solo' ? widget.store.levelFor('visual_memory') : 1,
           ),
         ),
       );
