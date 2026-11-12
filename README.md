@@ -115,3 +115,11 @@ points after level 20. Group round limits are unchanged. Each game's round numbe
 continues from its saved round total. Icons appear next to game titles, and web
 release preparation versions fonts/assets and browser icon URLs as well as scripts
 to avoid the production host's long-lived stale icon cache.
+
+## Scoring pace
+
+New rounds award **0–10 points** and at most **2 XP**. Accuracy earns the points;
+speed can only modify an accurate answer, so a completely wrong answer earns
+zero points and XP. Hints reduce rewards. Group matches use the same point cap.
+Existing accumulated points and XP are retained. Legacy per-round best scores
+are displayed on the new ten-point scale without deleting their original values.

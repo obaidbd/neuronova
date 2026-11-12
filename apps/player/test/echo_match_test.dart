@@ -11,17 +11,17 @@ void main() {
         expect(match.finished, isFalse);
         expect(match.current, players[turn % count]);
         expect(match.round, turn ~/ count + 1);
-        match.record(score: 100, perfect: true);
+        match.record(score: 10, perfect: true);
       }
       expect(match.finished, isTrue);
       expect(
         players.every(
-          (p) => p.rounds == 3 && p.points == 300 && p.reachedLevel == 3,
+          (p) => p.rounds == 3 && p.points == 30 && p.reachedLevel == 3,
         ),
         isTrue,
       );
       expect(match.winners.length, count);
-      expect(() => match.record(score: 100, perfect: true), throwsStateError);
+      expect(() => match.record(score: 10, perfect: true), throwsStateError);
     }
   });
 
@@ -29,23 +29,23 @@ void main() {
     final player = EchoPlayer('Solo');
     final match = EchoMatch(players: [player], roundLimit: 1);
     for (var i = 0; i < 250; i++) {
-      match.record(score: 100, perfect: true);
+      match.record(score: 10, perfect: true);
       expect(match.finished, isFalse);
     }
     expect(match.roundLimit, isNull);
     expect(match.round, 251);
-    expect(player.points, 25000);
+    expect(player.points, 2500);
   });
 
   test('completed level outranks points; points break a level tie', () {
     final a = EchoPlayer('A'), b = EchoPlayer('B'), c = EchoPlayer('C');
     final match = EchoMatch(players: [a, b, c], roundLimit: 2);
-    match.record(score: 60, perfect: true);
-    match.record(score: 100, perfect: false);
-    match.record(score: 50, perfect: true);
-    match.record(score: 60, perfect: true);
-    match.record(score: 100, perfect: false);
-    match.record(score: 50, perfect: true);
+    match.record(score: 6, perfect: true);
+    match.record(score: 10, perfect: false);
+    match.record(score: 5, perfect: true);
+    match.record(score: 6, perfect: true);
+    match.record(score: 10, perfect: false);
+    match.record(score: 5, perfect: true);
     expect(match.standings, [a, c, b]);
     expect(match.winners, [a]);
   });
@@ -56,10 +56,10 @@ void main() {
       final player = EchoPlayer('Solo');
       final match = EchoMatch(players: [player], roundLimit: null);
       for (var i = 0; i < 150; i++) {
-        match.record(score: 100, perfect: true);
+        match.record(score: 10, perfect: true);
         expect(match.finished, isFalse);
       }
-      expect(player.points, 15000);
+      expect(player.points, 1500);
       expect(player.level, 20);
       expect(player.reachedLevel, 20);
       match.end();

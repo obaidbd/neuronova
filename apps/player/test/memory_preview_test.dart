@@ -42,13 +42,13 @@ void main() {
       }
       await t.tap(find.text('Submit (3/3)'));
       await t.pumpAndSettle();
-      expect(store.pointsFor('visual_memory'), 100);
+      expect(store.pointsFor('visual_memory'), 10);
       expect(find.text('Finish run'), findsNothing);
       expect(find.text('View results'), findsNothing);
       await t.tap(find.text('Next round'));
       await t.pumpAndSettle();
       expect(find.text('Round 2 · Continuous'), findsOneWidget);
-      expect(find.text('Score 100'), findsOneWidget);
+      expect(find.text('Score 10'), findsOneWidget);
       expect(find.byKey(const Key('preview-start')), findsOneWidget);
       expect(find.byKey(const Key('header-game-icon')), findsOneWidget);
       expect(t.takeException(), isNull);
@@ -94,7 +94,7 @@ void main() {
       await t.tap(submit);
       await t.pumpAndSettle();
       expect(store.roundsFor('spatial_memory'), 1);
-      expect(store.pointsFor('spatial_memory'), 100);
+      expect(store.pointsFor('spatial_memory'), 10);
       expect(store.pointsFor('visual_memory'), 0);
       expect(find.byKey(const Key('result-score')), findsOneWidget);
       expect(t.takeException(), isNull);

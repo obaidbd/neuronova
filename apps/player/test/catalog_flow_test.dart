@@ -93,49 +93,56 @@ void main() {
       SharedPreferences.setMockInitialValues({
         'best_visual_memory': 100,
         'xp': 1068,
+        'points_attention': 1200,
       });
       final store = await ProgressStore.open();
       final numbers = store.skillFor('number_reasoning');
       final memory = store.memorySkill;
       await store.commitRound(
         roundId: 'number-1',
-        score: 90,
-        xp: 18,
+        score: 9,
+        xp: 2,
         skill: numbers,
         skillKey: 'number_reasoning',
       );
       await store.commitRound(
         roundId: 'number-2',
-        score: 70,
-        xp: 14,
+        score: 7,
+        xp: 1,
         skill: numbers,
         skillKey: 'number_reasoning',
       );
       await store.commitRound(
         roundId: 'memory-1',
-        score: 100,
-        xp: 20,
+        score: 10,
+        xp: 2,
         skill: memory,
       );
       expect(
         await store.commitRound(
           roundId: 'number-1',
-          score: 90,
-          xp: 18,
+          score: 9,
+          xp: 2,
           skill: numbers,
           skillKey: 'number_reasoning',
         ),
         isFalse,
       );
       final saved = await ProgressStore.open();
-      expect(saved.pointsFor('number_reasoning'), 160);
-      expect(saved.xpFor('number_reasoning'), 32);
+      expect(saved.pointsFor('number_reasoning'), 16);
+      expect(saved.xpFor('number_reasoning'), 3);
       expect(saved.roundsFor('number_reasoning'), 2);
-      expect(saved.pointsFor('visual_memory'), 100);
-      expect(saved.xpFor('visual_memory'), 20);
-      expect(saved.bestFor('visual_memory'), 100);
+      expect(saved.pointsFor('visual_memory'), 10);
+      expect(saved.xpFor('visual_memory'), 2);
+      expect(saved.bestFor('visual_memory'), 10);
       expect(saved.pointsFor('logic'), 0);
-      expect(saved.xp, 1120);
+      expect(saved.pointsFor('attention'), 1200);
+      expect(saved.bestFor('number_reasoning'), 9);
+      expect(
+        (await SharedPreferences.getInstance()).getInt('best_visual_memory'),
+        100,
+      );
+      expect(saved.xp, 1073);
     },
   );
 }

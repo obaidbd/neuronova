@@ -79,7 +79,7 @@ void main() {
         }
         await t.tap(find.text('Submit (3/3)'));
         await t.pumpAndSettle();
-        expect(match.players[seat].points, 100);
+        expect(match.players[seat].points, 10);
         expect(match.players[seat].level, 2);
         final next = find.text(seat == 3 ? 'View results' : 'Next player');
         await t.ensureVisible(next);

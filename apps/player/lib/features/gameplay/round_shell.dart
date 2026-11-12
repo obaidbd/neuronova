@@ -331,7 +331,7 @@ class _RoundShellState extends State<RoundShell> {
                     ),
                   const SizedBox(height: 28),
                   Semantics(
-                    label: 'Score $score out of 100',
+                    label: 'Score $score out of $maxRoundScore',
                     excludeSemantics: true,
                     child: Column(
                       children: [

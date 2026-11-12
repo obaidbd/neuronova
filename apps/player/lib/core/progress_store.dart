@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../game/rules/adaptive.dart';
+import '../game/rules/scoring.dart';
 
 /// Local guest progress (spec §30). XP is local-only until a server exists.
 class ProgressStore {
@@ -29,7 +30,12 @@ class ProgressStore {
 
   int get xp => _prefs.getInt('xp') ?? 0;
   int get novaEnergy => _prefs.getInt('energy') ?? 0;
-  int bestFor(String skillKey) => _prefs.getInt('best_$skillKey') ?? 0;
+  int bestFor(String skillKey) =>
+      _prefs.getInt('best_points_$skillKey') ??
+      ((_prefs.getInt('best_$skillKey') ?? 0) / 10).round().clamp(
+        0,
+        maxRoundScore,
+      );
   int pointsFor(String game) => _prefs.getInt('points_$game') ?? 0;
   int xpFor(String game) => _prefs.getInt('xp_$game') ?? 0;
   int roundsFor(String game) => _prefs.getInt('rounds_$game') ?? 0;
@@ -77,18 +83,21 @@ class ProgressStore {
     required SkillState skill,
     String skillKey = 'visual_memory',
   }) async {
+    final awardedScore = score.clamp(0, maxRoundScore);
     final done = _prefs.getStringList('committed') ?? <String>[];
     if (done.contains(roundId)) return false;
     done.add(roundId);
     if (done.length > 200) done.removeRange(0, done.length - 200);
     await _prefs.setStringList('committed', done);
     await _prefs.setInt('xp', xp + this.xp);
-    await _prefs.setInt('energy', novaEnergy + (score >= 60 ? 10 : 3));
+    await _prefs.setInt('energy', novaEnergy + (awardedScore >= 6 ? 10 : 3));
     await _prefs.setInt('rounds', completedRounds + 1);
-    await _prefs.setInt('points_$skillKey', pointsFor(skillKey) + score);
+    await _prefs.setInt('points_$skillKey', pointsFor(skillKey) + awardedScore);
     await _prefs.setInt('xp_$skillKey', xpFor(skillKey) + xp);
     await _prefs.setInt('rounds_$skillKey', roundsFor(skillKey) + 1);
-    if (score > bestFor(skillKey)) await _prefs.setInt('best_$skillKey', score);
+    if (awardedScore > bestFor(skillKey)) {
+      await _prefs.setInt('best_points_$skillKey', awardedScore);
+    }
     await _prefs.setString('skill_$skillKey', jsonEncode(skill.toJson()));
     return true;
   }

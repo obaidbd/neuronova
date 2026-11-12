@@ -28,9 +28,10 @@ void main() {
     test('evaluate perfect, partial, and illegal', () {
       final p = EchoGridPuzzle.generate(tier: 2, seed: 7);
       expect(p.evaluate(p.targets).perfect, isTrue);
-      final wrong = (List<int>.generate(9, (i) => i)
-            ..removeWhere(p.targets.contains))
-          .first;
+      final wrong = (List<int>.generate(
+        9,
+        (i) => i,
+      )..removeWhere(p.targets.contains)).first;
       final partial = {...p.targets.take(2), wrong};
       final r = p.evaluate(partial);
       expect(r.perfect, isFalse);
@@ -42,16 +43,73 @@ void main() {
 
   group('scoring', () {
     test('timed formula', () {
-      expect(gameScore(accuracy: 1, timed: true, hints: 0, targetMs: 5000, actualMs: 5000), 100);
-      expect(gameScore(accuracy: 1, timed: true, hints: 0, targetMs: 5000, actualMs: 10000), 93);
+      expect(
+        gameScore(
+          accuracy: 1,
+          timed: true,
+          hints: 0,
+          targetMs: 5000,
+          actualMs: 5000,
+        ),
+        10,
+      );
+      expect(
+        gameScore(
+          accuracy: 1,
+          timed: true,
+          hints: 0,
+          targetMs: 5000,
+          actualMs: 10000,
+        ),
+        9,
+      );
     });
     test('untimed formula ignores speed', () {
-      expect(gameScore(accuracy: 1, timed: false, hints: 0), 100);
-      expect(gameScore(accuracy: 0.5, timed: false, hints: 0), 55);
+      expect(gameScore(accuracy: 1, timed: false, hints: 0), 10);
+      expect(gameScore(accuracy: 0.5, timed: false, hints: 0), 5);
+    });
+    test('wrong answers never earn points, regardless of speed or mode', () {
+      expect(
+        gameScore(
+          accuracy: 0,
+          timed: true,
+          hints: 0,
+          targetMs: 5000,
+          actualMs: 1,
+        ),
+        0,
+      );
+      expect(gameScore(accuracy: 0, timed: false, hints: 0), 0);
+      expect(xpForScore(0, firstCompletion: true), 0);
+    });
+    test('accuracy and hints keep every award within 0–10', () {
+      for (var i = 0; i <= 100; i++) {
+        final accuracy = i / 100;
+        final score = gameScore(
+          accuracy: accuracy,
+          timed: true,
+          hints: 0,
+          targetMs: 5000,
+          actualMs: 1000,
+        );
+        expect(score, inInclusiveRange(0, 10));
+        expect(score <= (10 * accuracy).round(), isTrue);
+      }
+      expect(gameScore(accuracy: 1, timed: false, hints: 4), 0);
+      expect(
+        gameScore(
+          accuracy: 0.5,
+          timed: true,
+          hints: 0,
+          targetMs: 5000,
+          actualMs: 1000,
+        ),
+        5,
+      );
     });
     test('replay XP is reduced', () {
-      expect(xpForScore(100, firstCompletion: true), 20);
-      expect(xpForScore(100, firstCompletion: false), 5);
+      expect(xpForScore(10, firstCompletion: true), 2);
+      expect(xpForScore(10, firstCompletion: false), 0);
     });
   });
 

@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'scoring.dart';
+
 /// A local match. Each seat has independent progress; ties remain ties.
 class EchoPlayer {
   EchoPlayer(
@@ -47,7 +49,7 @@ class EchoMatch {
 
   void record({required int score, required bool perfect}) {
     if (finished) throw StateError('Match finished');
-    current.points += score.clamp(0, 100);
+    current.points += score.clamp(0, maxRoundScore);
     current.rounds++;
     if (perfect) {
       current.reachedLevel = max(current.reachedLevel, current.level);
