@@ -29,6 +29,25 @@ class ProgressStore {
   bool get untimedMode => _prefs.getBool('untimed') ?? false;
   Future<void> setUntimed(bool v) => _prefs.setBool('untimed', v);
 
+  bool untimedFor(String game) =>
+      _prefs.getBool('untimed_$game') ?? untimedMode;
+  Future<void> setUntimedFor(String game, bool value) async {
+    await _prefs.setBool('untimed_$game', value);
+  }
+
+  int? practiceTierFor(String game) {
+    final value = _prefs.getInt('practice_$game');
+    return value?.clamp(1, 10);
+  }
+
+  Future<void> setPracticeTierFor(String game, int? tier) async {
+    if (tier == null) {
+      await _prefs.remove('practice_$game');
+    } else {
+      await _prefs.setInt('practice_$game', tier.clamp(1, 10));
+    }
+  }
+
   SkillState get memorySkill => skillFor('visual_memory');
 
   SkillState skillFor(String key) {

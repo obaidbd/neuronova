@@ -144,7 +144,7 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
     final r = puzzle.evaluate(selected);
     final s = gameScore(
       accuracy: r.accuracy,
-      timed: !widget.store.untimedMode,
+      timed: !widget.store.untimedFor('visual_memory'),
       hints: 0,
       targetMs: 8000 + puzzle.config.targets * 1500,
       actualMs: clock.elapsedMilliseconds,

@@ -69,7 +69,7 @@ class _RoundShellState extends State<RoundShell> {
   Future<void> _finish(RoundOutcome o) async {
     if (outcome != null) return; // ignore duplicate completion events
     clock.stop();
-    final untimed = widget.store.untimedMode;
+    final untimed = widget.store.untimedFor(widget.kind.skillKey);
     final s = gameScore(
       accuracy: o.accuracy,
       timed: !untimed,

@@ -30,7 +30,7 @@ flutter run -d chrome
 ```
 
 ## Try it in a browser
-Enable GitHub Pages (Settings -> Pages -> Source: GitHub Actions); the `Deploy web demo` workflow then publishes the web build to `https://<owner>.github.io/neuronova/`.
+Open https://neuronova.muslimit.net/. The `Deploy web to neuronova.muslimit.net` workflow builds and uploads changes on pushes to `main` using the configured deployment secrets.
 
 
 ## Echo Grid local matches
@@ -65,12 +65,17 @@ flutter build web --release
 ```
 
 Upload the contents of `apps/player/build/web/` to the website's document root.
-For GitHub Pages under `/neuronova/`, use the existing Pages workflow instead;
-its base path is different from a root-domain build.
+The deployment workflow uses a root-domain build (`--base-href "/"`).
 
 The CI workflow builds and saves a root-domain `neuronova-web-root` artifact on
-each push/PR. The Pages workflow deploys on pushes to `main`, once GitHub Pages
-is enabled under **Settings → Pages → Source: GitHub Actions**. The existing
-Pages deployment failed with HTTP 404 because Pages was not enabled. The current
-`neuronova.muslimit.net` host must be connected separately; a repository build
-does not automatically upload to that server.
+each push/PR. The server deployment workflow runs on pushes to `main` that change
+the player application.
+
+## Game library and individual settings
+
+The home screen has six responsive game cards with skill categories and personal
+best scores. Each card opens that game's details, instructions and settings before
+starting gameplay. Adaptive or fixed practice difficulty and relaxed scoring are
+saved separately for each game when you start it. Practice preserves saved skill
+progress; relaxed scoring removes the speed bonus without changing preview times.
+Echo Grid then opens its existing player, round and preview-time setup.
