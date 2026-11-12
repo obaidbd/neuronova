@@ -24,6 +24,9 @@ class ProgressStore {
   int get xp => _prefs.getInt('xp') ?? 0;
   int get novaEnergy => _prefs.getInt('energy') ?? 0;
   int bestFor(String skillKey) => _prefs.getInt('best_$skillKey') ?? 0;
+  int pointsFor(String game) => _prefs.getInt('points_$game') ?? 0;
+  int xpFor(String game) => _prefs.getInt('xp_$game') ?? 0;
+  int roundsFor(String game) => _prefs.getInt('rounds_$game') ?? 0;
   int get bestScore => bestFor('visual_memory');
   int get completedRounds => _prefs.getInt('rounds') ?? 0;
   bool get untimedMode => _prefs.getBool('untimed') ?? false;
@@ -76,6 +79,9 @@ class ProgressStore {
     await _prefs.setInt('xp', xp + this.xp);
     await _prefs.setInt('energy', novaEnergy + (score >= 60 ? 10 : 3));
     await _prefs.setInt('rounds', completedRounds + 1);
+    await _prefs.setInt('points_$skillKey', pointsFor(skillKey) + score);
+    await _prefs.setInt('xp_$skillKey', xpFor(skillKey) + xp);
+    await _prefs.setInt('rounds_$skillKey', roundsFor(skillKey) + 1);
     if (score > bestFor(skillKey)) await _prefs.setInt('best_$skillKey', score);
     await _prefs.setString('skill_$skillKey', jsonEncode(skill.toJson()));
     return true;

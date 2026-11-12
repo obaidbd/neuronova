@@ -10,7 +10,7 @@ class EchoPlayer {
   });
   final String name;
   final bool computer;
-  final int previewSeconds;
+  int previewSeconds;
   int level;
   int reachedLevel = 0;
   int points = 0;

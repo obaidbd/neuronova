@@ -3,48 +3,46 @@ import 'package:flutter/material.dart';
 import '../../app/theme.dart';
 import '../../core/game_kind.dart';
 import '../../core/progress_store.dart';
-import '../gameplay/echo_setup_screen.dart';
-import '../gameplay/round_shell.dart';
 import 'game_presentation.dart';
 
-class GameDetailsScreen extends StatefulWidget {
-  const GameDetailsScreen({super.key, required this.kind, required this.store});
+enum GameSettingsAction { saved, matchSetup }
+
+class GameSettingsScreen extends StatefulWidget {
+  const GameSettingsScreen({
+    super.key,
+    required this.kind,
+    required this.store,
+  });
   final GameKind kind;
   final ProgressStore store;
   @override
-  State<GameDetailsScreen> createState() => _GameDetailsScreenState();
+  State<GameSettingsScreen> createState() => _GameSettingsScreenState();
 }
 
-class _GameDetailsScreenState extends State<GameDetailsScreen> {
+class _GameSettingsScreenState extends State<GameSettingsScreen> {
   late int? tier = widget.store.practiceTierFor(widget.kind.skillKey);
   late bool untimed = widget.store.untimedFor(widget.kind.skillKey);
   bool busy = false;
+  late int previewSeconds = widget.store.echoPreviewSeconds(0);
 
-  Future<void> start() async {
+  Future<void> save([
+    GameSettingsAction action = GameSettingsAction.saved,
+  ]) async {
     setState(() => busy = true);
     try {
       await widget.store.setPracticeTierFor(widget.kind.skillKey, tier);
       await widget.store.setUntimedFor(widget.kind.skillKey, untimed);
-      if (!mounted) return;
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => widget.kind == GameKind.echoGrid
-              ? EchoSetupScreen(store: widget.store, tierOverride: tier)
-              : RoundShell(
-                  kind: widget.kind,
-                  store: widget.store,
-                  tierOverride: tier,
-                ),
-        ),
-      );
+      if (widget.kind == GameKind.echoGrid) {
+        await widget.store.setEchoPreviewSeconds(0, previewSeconds);
+      }
+      if (mounted) Navigator.of(context).pop(action);
     } catch (_) {
       if (mounted) {
+        setState(() => busy = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not start. Please try again.')),
+          const SnackBar(content: Text('Could not save. Please try again.')),
         );
       }
-    } finally {
-      if (mounted) setState(() => busy = false);
     }
   }
 
@@ -53,7 +51,7 @@ class _GameDetailsScreenState extends State<GameDetailsScreen> {
     final game = widget.kind;
     return Scaffold(
       appBar: AppBar(
-        title: Text(game.title),
+        title: Text('${game.title} · Settings'),
         backgroundColor: NovaColors.background,
         elevation: 0,
       ),
@@ -140,6 +138,41 @@ class _GameDetailsScreenState extends State<GameDetailsScreen> {
                         : (value) => setState(() => untimed = value),
                   ),
                 ),
+                if (game == GameKind.echoGrid) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'Solo preview · ${previewSeconds}s',
+                    style: const TextStyle(color: NovaColors.textSecondary),
+                  ),
+                  Slider(
+                    key: const Key('solo-preview'),
+                    min: 1,
+                    max: 15,
+                    divisions: 14,
+                    value: previewSeconds.toDouble(),
+                    label: '${previewSeconds}s',
+                    onChanged: busy
+                        ? null
+                        : (value) =>
+                              setState(() => previewSeconds = value.round()),
+                  ),
+                  OutlinedButton.icon(
+                    key: const Key('match-settings'),
+                    onPressed: busy
+                        ? null
+                        : () => save(GameSettingsAction.matchSetup),
+                    icon: const Icon(Icons.group_outlined),
+                    label: const Text('Players & rounds'),
+                  ),
+                  const Text(
+                    'Start a new match',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: NovaColors.textSecondary,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 const Divider(height: 1),
                 ExpansionTile(
@@ -177,11 +210,11 @@ class _GameDetailsScreenState extends State<GameDetailsScreen> {
                 ),
                 const SizedBox(height: 24),
                 FilledButton.icon(
-                  key: const Key('play-game'),
-                  onPressed: busy ? null : start,
+                  key: const Key('save-game-settings'),
+                  onPressed: busy ? null : () => save(),
                   style: FilledButton.styleFrom(backgroundColor: game.accent),
-                  icon: const Icon(Icons.play_arrow_rounded),
-                  label: Text(game == GameKind.echoGrid ? 'Continue' : 'Play'),
+                  icon: const Icon(Icons.check_rounded),
+                  label: const Text('Save'),
                 ),
               ],
             ),

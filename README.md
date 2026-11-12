@@ -41,6 +41,9 @@ Choose Solo, Friends (2–4 players sharing one device, taking turns), or Comput
 supports continuous play with no round or score limit and a **Finish run** button.
 
 Each seat can choose 1–15 seconds of preview time; the setting is saved locally.
+Home game icons open gameplay directly. Echo Grid starts a solo continuous run;
+its in-game Settings button provides preview controls and **Players & rounds**
+for a new match.
 A ready screen hides the next pattern while the device changes hands. Each
 perfect answer advances that player's level; a miss keeps the current level.
 Difficulty grows through 20 levels, from 3×3 to 7×7 and up to 20 target tiles;
@@ -78,11 +81,17 @@ that change the player application, without using GitHub artifact storage.
 ## Game library and individual settings
 
 The home screen has six compact, icon-only game cards. Tooltips and accessible
-labels identify each game; mobile shows three cards per row. Each card opens concise game settings before starting gameplay. Instructions
-are available in a collapsed **How to play** section. Adaptive or fixed practice difficulty and relaxed scoring are
-saved separately for each game when you start it. Practice preserves saved skill
-progress; relaxed scoring removes the speed bonus without changing preview times.
-Echo Grid then opens its existing player, round and preview-time setup.
+labels identify each game; mobile shows three cards per row. Each icon starts
+its game immediately, using its saved preferences. The Settings icon inside each
+game opens difficulty, relaxed scoring and instructions. Save returns to gameplay;
+an unfinished round restarts so memory previews are not lost while in settings.
+Completed results and awarded points are retained. Echo Grid's settings also offer
+solo preview time and a player/round setup for starting a new match.
+
+Each game shows its own total score, best score and XP. New round totals are
+tracked separately by game; old best scores and legacy global XP are preserved.
+Earlier round totals cannot be reconstructed from the old aggregate data.
+Shared-device Echo Grid matches retain their independent per-player match scores.
 
 ## Web update caching
 

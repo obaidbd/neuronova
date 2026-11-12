@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../../app/theme.dart';
 import '../../core/game_kind.dart';
 import '../catalog/game_presentation.dart';
+import '../catalog/game_settings_screen.dart';
+import 'game_score_bar.dart';
 import '../../core/progress_store.dart';
 import '../../game/rules/adaptive.dart';
 import '../../game/rules/scoring.dart';
@@ -51,16 +53,23 @@ class _RoundShellState extends State<RoundShell> {
   late Stopwatch clock;
   RoundOutcome? outcome;
   int score = 0, xp = 0;
+  int? activeTierOverride;
+  bool settingsOpen = false;
+  bool finishing = false;
 
   @override
   void initState() {
     super.initState();
     skill = widget.store.skillFor(widget.kind.skillKey);
+    activeTierOverride =
+        widget.tierOverride ??
+        widget.store.practiceTierFor(widget.kind.skillKey);
     _next();
   }
 
   void _next() {
-    tier = widget.tierOverride ?? skill.tier;
+    tier = activeTierOverride ?? skill.tier;
+    settingsOpen = false;
     seed = Random().nextInt(1 << 30);
     roundId = '${DateTime.now().microsecondsSinceEpoch}-$seed';
     clock = Stopwatch()..start();
@@ -68,7 +77,8 @@ class _RoundShellState extends State<RoundShell> {
   }
 
   Future<void> _finish(RoundOutcome o) async {
-    if (outcome != null) return; // ignore duplicate completion events
+    if (outcome != null || finishing) return;
+    setState(() => finishing = true); // ignore duplicate completion events
     clock.stop();
     final untimed = widget.store.untimedFor(widget.kind.skillKey);
     final s = gameScore(
@@ -80,7 +90,7 @@ class _RoundShellState extends State<RoundShell> {
     );
     final x = xpForScore(s, firstCompletion: o.perfect);
     // Manual tier override is test mode: it never changes the real skill.
-    if (widget.tierOverride == null) {
+    if (activeTierOverride == null) {
       skill.record(RoundRecord(accuracy: o.accuracy, success: o.perfect));
     }
     await widget.store.commitRound(
@@ -92,10 +102,32 @@ class _RoundShellState extends State<RoundShell> {
     );
     if (!mounted) return;
     setState(() {
+      finishing = false;
       outcome = o;
       score = s;
       xp = x;
     });
+  }
+
+  Future<void> openSettings() async {
+    if (finishing) return;
+    clock.stop();
+    setState(() => settingsOpen = true);
+    final action = await Navigator.of(context).push<GameSettingsAction>(
+      MaterialPageRoute(
+        builder: (_) =>
+            GameSettingsScreen(kind: widget.kind, store: widget.store),
+      ),
+    );
+    if (!mounted) return;
+    if (action != null) {
+      activeTierOverride = widget.store.practiceTierFor(widget.kind.skillKey);
+    }
+    if (outcome == null) {
+      _next();
+    } else {
+      setState(() => settingsOpen = false);
+    }
   }
 
   Widget _game() {
@@ -152,15 +184,11 @@ class _RoundShellState extends State<RoundShell> {
         ),
         backgroundColor: Colors.transparent,
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Center(
-              child: Text(
-                'Tier $tier${widget.tierOverride != null ? ' (test)' : ''}',
-                key: const Key('tier-label'),
-                style: const TextStyle(color: NovaColors.textSecondary),
-              ),
-            ),
+          IconButton(
+            key: const Key('game-settings'),
+            tooltip: 'Settings',
+            onPressed: finishing ? null : openSettings,
+            icon: const Icon(Icons.settings_outlined),
           ),
         ],
       ),
@@ -170,7 +198,31 @@ class _RoundShellState extends State<RoundShell> {
             constraints: const BoxConstraints(maxWidth: 520),
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: outcome == null ? _game() : _result(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  GameScoreBar(
+                    store: widget.store,
+                    skillKey: widget.kind.skillKey,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Lv $tier${activeTierOverride != null ? " · Practice" : ""}',
+                    key: const Key('tier-label'),
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: NovaColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Expanded(
+                    child: outcome == null
+                        ? (settingsOpen ? const SizedBox() : _game())
+                        : _result(),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

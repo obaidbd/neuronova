@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/theme.dart';
 import '../../core/progress_store.dart';
 import '../../core/game_kind.dart';
-import '../catalog/game_details_screen.dart';
+import '../gameplay/round_shell.dart';
 import '../catalog/game_presentation.dart';
 import '../gameplay/echo_grid_screen.dart';
 
@@ -18,7 +18,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> open(GameKind game) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => GameDetailsScreen(kind: game, store: widget.store),
+        builder: (_) => game == GameKind.echoGrid
+            ? EchoGridScreen(
+                store: widget.store,
+                tierOverride: widget.store.practiceTierFor(game.skillKey),
+              )
+            : RoundShell(kind: game, store: widget.store),
       ),
     );
     if (mounted) setState(() {});
@@ -67,26 +72,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
-                  Tooltip(
-                    message: 'Total XP',
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        color: NovaColors.surface,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${widget.store.xp} XP',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: NovaColors.gold,
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
               const SizedBox(height: 28),
@@ -127,8 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Semantics(
                             button: true,
                             onTap: () => open(game),
-                            label:
-                                '${game.title}, ${game.blurb}. View details and settings.',
+                            label: '${game.title}, ${game.blurb}. Play game.',
                             excludeSemantics: true,
                             child: Tooltip(
                               message: game.title,

@@ -9,6 +9,10 @@ import '../../game/rules/adaptive.dart';
 import '../../game/rules/echo_grid.dart';
 import '../../game/rules/echo_match.dart';
 import '../../game/rules/scoring.dart';
+import '../../core/game_kind.dart';
+import '../catalog/game_settings_screen.dart';
+import 'echo_setup_screen.dart';
+import 'game_score_bar.dart';
 
 enum _Phase { ready, preview, recall, result, finished }
 
@@ -43,11 +47,14 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
   int remaining = 4, playedRound = 1, score = 0, xpAwarded = 0;
   bool committing = false;
   late String roundId;
+  int? activeTierOverride;
 
   @override
   void initState() {
     super.initState();
     skill = widget.store.memorySkill;
+    activeTierOverride =
+        widget.tierOverride ?? widget.store.practiceTierFor('visual_memory');
     match =
         widget.match ??
         EchoMatch(
@@ -56,7 +63,7 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
             EchoPlayer(
               'Player 1',
               previewSeconds: widget.store.echoPreviewSeconds(0),
-              level: widget.tierOverride ?? skill.tier,
+              level: activeTierOverride ?? skill.tier,
             ),
           ],
         );
@@ -71,7 +78,7 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
         ? Random().nextInt(1 << 30)
         : widget.seed! + match.turn;
     puzzle = EchoGridPuzzle.generate(
-      tier: widget.tutorial ? 1 : widget.tierOverride ?? player.level,
+      tier: widget.tutorial ? 1 : activeTierOverride ?? player.level,
       seed: seed,
     );
     roundId = '${DateTime.now().microsecondsSinceEpoch}-$seed';
@@ -155,7 +162,7 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
     );
     if (match.players.length == 1) {
       final updated = SkillState.fromJson(skill.toJson());
-      if (widget.tierOverride == null) {
+      if (activeTierOverride == null) {
         updated.record(RoundRecord(accuracy: r.accuracy, success: r.perfect));
       }
       try {
@@ -187,6 +194,42 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
     });
   }
 
+  Future<void> openSettings() async {
+    if (committing) return;
+    timer?.cancel();
+    clock.stop();
+    final previousPhase = phase;
+    final action = await Navigator.of(context).push<GameSettingsAction>(
+      MaterialPageRoute(
+        builder: (_) =>
+            GameSettingsScreen(kind: GameKind.echoGrid, store: widget.store),
+      ),
+    );
+    if (!mounted) return;
+    if (action != null) {
+      activeTierOverride = widget.store.practiceTierFor('visual_memory');
+    }
+    if (action == GameSettingsAction.matchSetup) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => EchoSetupScreen(
+            store: widget.store,
+            tierOverride: activeTierOverride,
+          ),
+        ),
+      );
+      return;
+    }
+    if (match.players.length == 1) {
+      player.previewSeconds = widget.store.echoPreviewSeconds(0);
+    }
+    if (previousPhase == _Phase.result || previousPhase == _Phase.finished) {
+      setState(() {});
+    } else {
+      newRound();
+    }
+  }
+
   void advance() {
     if (match.finished) {
       setState(() => phase = _Phase.finished);
@@ -209,6 +252,15 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
       title: Text(widget.tutorial ? 'First Gate' : 'Echo Grid'),
       toolbarHeight: 48,
       backgroundColor: Colors.transparent,
+      actions: [
+        if (!widget.tutorial)
+          IconButton(
+            key: const Key('game-settings'),
+            tooltip: 'Settings',
+            onPressed: committing ? null : openSettings,
+            icon: const Icon(Icons.settings_outlined),
+          ),
+      ],
     ),
     body: SafeArea(
       child: Align(
@@ -461,80 +513,27 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
     );
   }
 
-  Widget scoreboard() => Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        colors: [Color(0xFF234A63), NovaColors.surface],
-      ),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: NovaColors.emerald.withValues(alpha: .4)),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.emoji_events_rounded, color: NovaColors.gold),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                phase == _Phase.finished
-                    ? 'FINAL STANDINGS'
-                    : 'ROUND $playedRound${match.roundLimit == null ? " · CONTINUOUS" : " / ${match.roundLimit}"}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        for (final p in match.players)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 3),
-            child: Row(
-              children: [
-                Icon(
-                  p.computer ? Icons.smart_toy_outlined : Icons.person_rounded,
-                  color: p == player
-                      ? NovaColors.emerald
-                      : NovaColors.textSecondary,
-                  size: 20,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    p.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontWeight: p == player
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
-                  ),
-                ),
-                Text(
-                  'Lv ${p.level}',
-                  style: const TextStyle(color: NovaColors.emerald),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  '${p.points} pts',
-                  key: Key('points-${match.players.indexOf(p)}'),
-                  style: const TextStyle(
-                    color: NovaColors.gold,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 20,
-                  ),
-                ),
-              ],
+  Widget scoreboard() => Column(
+    children: [
+      GameScoreBar(store: widget.store, skillKey: 'visual_memory'),
+      const SizedBox(height: 10),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Round $playedRound${match.roundLimit == null ? " · Continuous" : " / ${match.roundLimit}"}',
+            style: const TextStyle(
+              color: NovaColors.textSecondary,
+              fontSize: 12,
             ),
           ),
-      ],
-    ),
+          Text(
+            'Lv ${player.level}',
+            style: const TextStyle(color: NovaColors.emerald, fontSize: 12),
+          ),
+        ],
+      ),
+    ],
   );
 
   Widget readyPanel() => Center(
