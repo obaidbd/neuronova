@@ -47,7 +47,10 @@ Difficulty grows through 20 levels, from 3×3 to 7×7 and up to 20 target tiles;
 continuous play keeps running at level 20. The existing home-screen test-tier
 option fixes puzzle difficulty for testing.
 
-The header shows cumulative match points and each player's current level.
+Player panels show cumulative match points and current levels. Shared-device
+matches place four players at four corners, three players at three corners, or
+two players at opposite ends of the grid. Seat colours stay fixed and the active
+player is highlighted through previews, recall and result reveals.
 Standings rank highest **completed** level first, then total points; exact ties
 share the win. Friends/computer matches keep scores within the current match and
 do not award guest XP or alter the guest's saved adaptive skill. These are local

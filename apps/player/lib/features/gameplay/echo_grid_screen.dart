@@ -201,6 +201,8 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
     super.dispose();
   }
 
+  bool get sharedBoard => match.players.length > 1;
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
@@ -218,62 +220,40 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                scoreboard(),
+                if (sharedBoard)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      phase == _Phase.finished
+                          ? 'FINAL STANDINGS'
+                          : 'ROUND $playedRound / ${match.roundLimit ?? "∞"}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        letterSpacing: 1.5,
+                        color: NovaColors.textSecondary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  )
+                else
+                  scoreboard(),
                 const SizedBox(height: 12),
                 if (phase == _Phase.finished)
                   finalPanel()
-                else if (phase == _Phase.ready)
-                  readyPanel()
                 else ...[
-                  Text(
-                    instruction(),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 19,
-                      color: NovaColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    phase == _Phase.preview
-                        ? 'Memorize · ${remaining}s remaining'
-                        : '${puzzle.config.size} × ${puzzle.config.size} · ${puzzle.config.targets} tiles',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: NovaColors.gold),
-                  ),
-                  const SizedBox(height: 10),
-                  if (phase == _Phase.preview) ...[
-                    LinearProgressIndicator(
-                      value: remaining / player.previewSeconds,
-                      color: NovaColors.gold,
-                    ),
+                  if (sharedBoard) ...[
+                    seatRow(top: true),
                     const SizedBox(height: 10),
                   ],
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final side = min(
-                        constraints.maxWidth,
-                        max(210.0, MediaQuery.sizeOf(context).height - 370),
-                      );
-                      return Center(
-                        child: SizedBox(
-                          width: side,
-                          height: side,
-                          child: GridView.count(
-                            crossAxisCount: puzzle.config.size,
-                            mainAxisSpacing: 6,
-                            crossAxisSpacing: 6,
-                            padding: EdgeInsets.zero,
-                            physics: const NeverScrollableScrollPhysics(),
-                            children: [
-                              for (var i = 0; i < puzzle.config.cells; i++)
-                                cell(i),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                  if (phase == _Phase.ready)
+                    boardSurface(readyPanel())
+                  else
+                    ...turnBoard(),
+                  if (sharedBoard) ...[
+                    const SizedBox(height: 10),
+                    seatRow(top: false),
+                  ],
                   const SizedBox(height: 12),
                   if (phase == _Phase.recall)
                     if (player.computer)
@@ -298,6 +278,188 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
       ),
     ),
   );
+
+  double boardSide(double width) => min(
+    width,
+    max(196.0, MediaQuery.sizeOf(context).height - (sharedBoard ? 500 : 370)),
+  );
+
+  Widget boardSurface(Widget child) => LayoutBuilder(
+    builder: (context, constraints) {
+      final side = boardSide(constraints.maxWidth);
+      return Center(
+        child: SizedBox(
+          key: const Key('echo-board'),
+          width: side,
+          height: side,
+          child: child,
+        ),
+      );
+    },
+  );
+
+  List<Widget> turnBoard() => [
+    Text(
+      instruction(),
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: sharedBoard ? 16 : 19,
+        color: NovaColors.textSecondary,
+      ),
+    ),
+    const SizedBox(height: 6),
+    Text(
+      phase == _Phase.preview
+          ? 'Memorize · ${remaining}s remaining'
+          : '${puzzle.config.size} × ${puzzle.config.size} · ${puzzle.config.targets} tiles',
+      textAlign: TextAlign.center,
+      style: const TextStyle(color: NovaColors.gold, fontSize: 13),
+    ),
+    const SizedBox(height: 10),
+    if (phase == _Phase.preview) ...[
+      LinearProgressIndicator(
+        value: remaining / player.previewSeconds,
+        color: sharedBoard
+            ? seatColor(match.players.indexOf(player))
+            : NovaColors.gold,
+      ),
+      const SizedBox(height: 10),
+    ],
+    boardSurface(
+      GridView.count(
+        crossAxisCount: puzzle.config.size,
+        mainAxisSpacing: 6,
+        crossAxisSpacing: 6,
+        padding: EdgeInsets.zero,
+        physics: const NeverScrollableScrollPhysics(),
+        children: [for (var i = 0; i < puzzle.config.cells; i++) cell(i)],
+      ),
+    ),
+  ];
+
+  Color seatColor(int index) => const [
+    Color(0xFFFF8E91),
+    Color(0xFF83B6FF),
+    NovaColors.gold,
+    NovaColors.emerald,
+  ][index];
+
+  Widget seatRow({required bool top}) {
+    // Seat 1 stays nearest the device owner. Other seats keep their positions
+    // throughout the match, including handoffs and result reveals.
+    if (match.players.length == 2) {
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 190),
+          child: playerSeat(top ? 1 : 0),
+        ),
+      );
+    }
+    final left = top ? 1 : 0;
+    final right = top
+        ? 2
+        : match.players.length == 4
+        ? 3
+        : null;
+    return Row(
+      children: [
+        Expanded(child: playerSeat(left)),
+        const SizedBox(width: 12),
+        Expanded(child: right == null ? const SizedBox() : playerSeat(right)),
+      ],
+    );
+  }
+
+  Widget playerSeat(int index) {
+    final seat = match.players[index];
+    final active = identical(seat, player) && phase != _Phase.finished;
+    final color = seatColor(index);
+    return Semantics(
+      container: true,
+      excludeSemantics: true,
+      label:
+          '${seat.name}, level ${seat.level}, ${seat.points} points${active ? ", current turn" : ""}',
+      child: AnimatedContainer(
+        key: Key('player-seat-$index'),
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: active ? color.withValues(alpha: .13) : NovaColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: active ? color : color.withValues(alpha: .18),
+            width: active ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 10,
+                  backgroundColor: color.withValues(alpha: .16),
+                  child: seat.computer
+                      ? Icon(Icons.smart_toy_rounded, size: 12, color: color)
+                      : Text(
+                          '${index + 1}',
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Tooltip(
+                    message: seat.name,
+                    child: Text(
+                      seat.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                if (active)
+                  Icon(Icons.play_arrow_rounded, color: color, size: 16),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${seat.points} pts',
+                    key: Key('points-$index'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                Text(
+                  'Lv ${seat.level}',
+                  style: const TextStyle(
+                    color: NovaColors.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget scoreboard() => Container(
     padding: const EdgeInsets.all(14),
@@ -375,34 +537,52 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
     ),
   );
 
-  Widget readyPanel() => Column(
-    children: [
-      const SizedBox(height: 24),
-      Icon(
-        player.computer
-            ? Icons.smart_toy_rounded
-            : Icons.screen_rotation_rounded,
-        size: 56,
-        color: NovaColors.emerald,
+  Widget readyPanel() => Center(
+    child: SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            player.computer
+                ? Icons.smart_toy_rounded
+                : Icons.screen_rotation_rounded,
+            size: 30,
+            color: seatColor(match.players.indexOf(player)),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${player.name}’s turn',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Level ${player.level} · ${player.previewSeconds}s to remember',
+            style: const TextStyle(
+              fontSize: 12,
+              color: NovaColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Other players, look away.',
+            style: TextStyle(fontSize: 12, color: NovaColors.textSecondary),
+          ),
+          const SizedBox(height: 12),
+          FilledButton(
+            onPressed: startPreview,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(160, 44),
+              textStyle: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            child: Text(player.computer ? 'Run computer turn' : 'I’m ready'),
+          ),
+        ],
       ),
-      const SizedBox(height: 12),
-      Text(
-        '${player.name}’s turn',
-        style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
-      ),
-      const SizedBox(height: 8),
-      Text('Level ${player.level} · ${player.previewSeconds}s to remember'),
-      const SizedBox(height: 8),
-      const Text(
-        'Other players, look away until this turn is finished.',
-        textAlign: TextAlign.center,
-      ),
-      const SizedBox(height: 20),
-      FilledButton(
-        onPressed: startPreview,
-        child: Text(player.computer ? 'Run computer turn' : 'I’m ready'),
-      ),
-    ],
+    ),
   );
 
   Widget finalPanel() => Column(
