@@ -2,7 +2,7 @@ name: Deploy web to neuronova.muslimit.net
 on:
   push:
     branches: [main]
-    paths: ['apps/player/**', '.github/workflows/deploy-web.yml']
+    paths: ['apps/player/**', 'scripts/prepare_web_release.py', '.github/workflows/deploy-web.yml']
   workflow_dispatch:
 concurrency:
   group: deploy-web
@@ -21,6 +21,8 @@ jobs:
           flutter pub get
           flutter test
           flutter build web --release --base-href "/"
+      - name: Prepare cache-safe web entrypoints
+        run: python3 scripts/prepare_web_release.py apps/player/build/web --revision "$GITHUB_SHA"
       - name: Upload to the server
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
@@ -31,3 +33,4 @@ jobs:
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
           rsync -az --delete -e "ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes" \
             apps/player/build/web/ neuronova@69.62.73.247:htdocs/neuronova.muslimit.net/
+

@@ -12,4 +12,5 @@ jobs:
       - run: flutter analyze
       - run: flutter test
       - run: flutter build web --release
-
+      - name: Check release preparation
+        run: python3 ../../scripts/prepare_web_release.py build/web --revision "$GITHUB_SHA"

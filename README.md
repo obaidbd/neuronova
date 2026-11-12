@@ -62,6 +62,7 @@ flutter pub get
 flutter analyze
 flutter test
 flutter build web --release
+python3 ../../scripts/prepare_web_release.py build/web
 ```
 
 Upload the contents of `apps/player/build/web/` to the website's document root.
@@ -79,3 +80,12 @@ starting gameplay. Adaptive or fixed practice difficulty and relaxed scoring are
 saved separately for each game when you start it. Practice preserves saved skill
 progress; relaxed scoring removes the speed bonus without changing preview times.
 Echo Grid then opens its existing player, round and preview-time setup.
+
+## Web update caching
+
+The production host sets long cache lifetimes for JavaScript. Release preparation
+adds content hashes to both the Flutter bootstrap and main bundle filenames, so
+new HTML loads the matching new application rather than a cached earlier build.
+The bootstrap no longer registers an offline app-shell worker; the HTML retires
+only the worker for this app scope. Local scores, preferences and XP are retained.
+Both CI and server deployment run the release preparation step after building.

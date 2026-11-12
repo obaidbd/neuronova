@@ -29,7 +29,7 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>neuronova_player</title>
+  <title>NeuroNova — Play. Think. Discover.</title>
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
@@ -41,6 +41,18 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <script>
+    // Retire only this app's old service worker. Keep saved game progress intact.
+    if ('serviceWorker' in navigator) {
+      const appScope = new URL('.', document.baseURI).href;
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) {
+          if (registration.scope === appScope) registration.unregister();
+        }
+      }).catch(() => {});
+    }
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
+
