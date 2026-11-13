@@ -10,10 +10,12 @@ class MatchBoard extends StatefulWidget {
     required this.match,
     required this.player,
     required this.child,
+    this.status,
   });
   final EchoMatch match;
   final EchoPlayer player;
   final Widget child;
+  final String? status;
 
   @override
   State<MatchBoard> createState() => _MatchBoardState();
@@ -156,7 +158,8 @@ class _MatchBoardState extends State<MatchBoard> {
                     builder: (context, action, _) => action == null
                         ? Center(
                             child: Text(
-                              seat.computer ? 'Thinking…' : 'Your turn',
+                              widget.status ??
+                                  (seat.computer ? 'Thinking…' : 'Your turn'),
                               style: TextStyle(fontSize: 11, color: color),
                             ),
                           )

@@ -55,6 +55,12 @@ class ProgressStore {
     await _prefs.setBool('untimed_$game', value);
   }
 
+  bool autoHandoffFor(String game) =>
+      _prefs.getBool('auto_handoff_$game') ?? true;
+  Future<void> setAutoHandoffFor(String game, bool value) async {
+    await _prefs.setBool('auto_handoff_$game', value);
+  }
+
   int? practiceTierFor(String game) {
     final value = _prefs.getInt('practice_$game');
     return value?.clamp(1, 10);

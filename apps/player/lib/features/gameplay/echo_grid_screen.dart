@@ -44,6 +44,7 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
   final selected = <int>{};
   _Phase phase = _Phase.preview;
   Timer? timer;
+  Timer? handoffTimer;
   final clock = Stopwatch();
   EchoGridResult? result;
   int remaining = 4, playedRound = 1, score = 0;
@@ -74,6 +75,7 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
   }
 
   void newRound() {
+    handoffTimer?.cancel();
     timer?.cancel();
     player = match.current;
     playedRound = match.players.length == 1 && !widget.tutorial
@@ -205,10 +207,24 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
       phase = _Phase.result;
       committing = false;
     });
+    scheduleHandoff();
+  }
+
+  void scheduleHandoff() {
+    handoffTimer?.cancel();
+    if (!sharedBoard ||
+        !widget.store.autoHandoffFor('visual_memory') ||
+        phase != _Phase.result) {
+      return;
+    }
+    handoffTimer = Timer(const Duration(milliseconds: 1200), () {
+      if (mounted && phase == _Phase.result) advance();
+    });
   }
 
   Future<void> openSettings() async {
     if (committing) return;
+    handoffTimer?.cancel();
     timer?.cancel();
     clock.stop();
     final previousPhase = phase;
@@ -238,12 +254,14 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
     }
     if (previousPhase == _Phase.result || previousPhase == _Phase.finished) {
       setState(() {});
+      scheduleHandoff();
     } else {
       newRound();
     }
   }
 
   void advance() {
+    handoffTimer?.cancel();
     if (match.finished) {
       setState(() => phase = _Phase.finished);
     } else {
@@ -253,6 +271,7 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
 
   @override
   void dispose() {
+    handoffTimer?.cancel();
     timer?.cancel();
     super.dispose();
   }
@@ -287,6 +306,7 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
                 ? MatchBoard(
                     match: match,
                     player: player,
+                    status: phase == _Phase.result ? 'Turn complete' : null,
                     child: _turnContent(),
                   )
                 : _turnContent(),
@@ -490,18 +510,27 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
         runSpacing: 8,
         alignment: WrapAlignment.center,
         children: [
-          TurnActionButton(
-            onPressed: widget.tutorial
-                ? () => Navigator.of(context).pop(true)
-                : advance,
-            label: widget.tutorial
-                ? 'Continue'
-                : match.finished
-                ? 'View results'
-                : match.players.length > 1
-                ? 'Next player'
-                : 'Next round',
-          ),
+          if (sharedBoard && widget.store.autoHandoffFor('visual_memory'))
+            Text(
+              match.finished ? 'Match complete' : 'Next player…',
+              style: const TextStyle(
+                fontSize: 12,
+                color: NovaColors.textSecondary,
+              ),
+            )
+          else
+            TurnActionButton(
+              onPressed: widget.tutorial
+                  ? () => Navigator.of(context).pop(true)
+                  : advance,
+              label: widget.tutorial
+                  ? 'Continue'
+                  : match.finished
+                  ? 'View results'
+                  : sharedBoard
+                  ? 'Next player'
+                  : 'Next round',
+            ),
         ],
       ),
     ],

@@ -84,9 +84,8 @@ void main() {
         await t.pumpAndSettle();
         expect(match.players[seat].points, 10);
         expect(match.players[seat].level, 2);
-        final next = find.text(seat == 3 ? 'View results' : 'Next player');
-        await t.ensureVisible(next);
-        await t.tap(next);
+        expect(find.text('Next player'), findsNothing);
+        await t.pump(const Duration(milliseconds: 1300));
         await t.pumpAndSettle();
         expect(t.takeException(), isNull);
       }

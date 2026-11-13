@@ -73,10 +73,12 @@ class _RoundShellState extends State<RoundShell> {
   bool waiting = false, finished = false;
   EchoPlayer? player;
   Timer? computerTimer;
+  Timer? handoffTimer;
   bool get sharedBoard => (widget.match?.players.length ?? 1) > 1;
 
   @override
   void dispose() {
+    handoffTimer?.cancel();
     computerTimer?.cancel();
     super.dispose();
   }
@@ -145,6 +147,7 @@ class _RoundShellState extends State<RoundShell> {
   }
 
   void _next() {
+    handoffTimer?.cancel();
     computerTimer?.cancel();
     if (sharedBoard && widget.match!.finished) {
       setState(() => finished = true);
@@ -206,10 +209,26 @@ class _RoundShellState extends State<RoundShell> {
           ? player!.level
           : widget.store.levelFor(widget.kind.skillKey);
     });
+    _scheduleHandoff();
+  }
+
+  void _scheduleHandoff() {
+    handoffTimer?.cancel();
+    if (!sharedBoard ||
+        !widget.store.autoHandoffFor(widget.kind.skillKey) ||
+        outcome == null ||
+        finished ||
+        settingsOpen) {
+      return;
+    }
+    handoffTimer = Timer(const Duration(milliseconds: 1200), () {
+      if (mounted && !settingsOpen && outcome != null) _next();
+    });
   }
 
   Future<void> openSettings() async {
     if (finishing) return;
+    handoffTimer?.cancel();
     clock.stop();
     computerTimer?.cancel();
     setState(() => settingsOpen = true);
@@ -239,6 +258,7 @@ class _RoundShellState extends State<RoundShell> {
       _next();
     } else {
       setState(() => settingsOpen = false);
+      _scheduleHandoff();
     }
   }
 
@@ -320,6 +340,7 @@ class _RoundShellState extends State<RoundShell> {
                   ? MatchBoard(
                       match: widget.match!,
                       player: player!,
+                      status: outcome == null ? null : 'Turn complete',
                       child: _turnContent(),
                     )
                   : _turnContent(),
@@ -406,10 +427,21 @@ class _RoundShellState extends State<RoundShell> {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              TurnActionButton(
-                label: widget.match!.finished ? 'View results' : 'Next player',
-                onPressed: _next,
-              ),
+              if (!widget.store.autoHandoffFor(widget.kind.skillKey))
+                TurnActionButton(
+                  label: widget.match!.finished
+                      ? 'View results'
+                      : 'Next player',
+                  onPressed: _next,
+                )
+              else
+                Text(
+                  widget.match!.finished ? 'Match complete' : 'Next player…',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: NovaColors.textSecondary,
+                  ),
+                ),
             ],
           ),
         ),

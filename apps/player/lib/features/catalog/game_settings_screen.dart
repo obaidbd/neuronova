@@ -27,6 +27,7 @@ class _GameSettingsScreenState extends State<GameSettingsScreen> {
   );
   late bool untimed = widget.store.untimedFor(widget.kind.skillKey);
   bool busy = false;
+  late bool autoHandoff = widget.store.autoHandoffFor(widget.kind.skillKey);
   late int previewSeconds = widget.kind == GameKind.echoGrid
       ? widget.store.echoPreviewSeconds(0)
       : widget.kind == GameKind.pathRecall
@@ -48,6 +49,7 @@ class _GameSettingsScreenState extends State<GameSettingsScreen> {
     try {
       await widget.store.setPracticeTierFor(widget.kind.skillKey, tier);
       await widget.store.setUntimedFor(widget.kind.skillKey, untimed);
+      await widget.store.setAutoHandoffFor(widget.kind.skillKey, autoHandoff);
       if (widget.kind == GameKind.echoGrid) {
         await widget.store.setEchoPreviewSeconds(0, previewSeconds);
       }
@@ -151,6 +153,36 @@ class _GameSettingsScreenState extends State<GameSettingsScreen> {
                     onChanged: busy
                         ? null
                         : (value) => setState(() => untimed = value),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<bool>(
+                  key: const Key('game-turn-change'),
+                  initialValue: autoHandoff,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Multiplayer turn change',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: true, child: Text('Automatic')),
+                    DropdownMenuItem(
+                      value: false,
+                      child: Text('Tap Next player'),
+                    ),
+                  ],
+                  onChanged: busy
+                      ? null
+                      : (value) => setState(() => autoHandoff = value ?? true),
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Text(
+                    'The next player presses Start when ready.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: NovaColors.textSecondary,
+                    ),
                   ),
                 ),
                 if (game == GameKind.echoGrid ||

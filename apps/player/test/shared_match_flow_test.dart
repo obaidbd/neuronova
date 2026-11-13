@@ -7,6 +7,7 @@ import 'package:neuronova_player/core/progress_store.dart';
 import 'package:neuronova_player/features/gameplay/echo_grid_screen.dart';
 import 'package:neuronova_player/features/gameplay/round_shell.dart';
 import 'package:neuronova_player/features/gameplay/echo_setup_screen.dart';
+import 'package:neuronova_player/features/gameplay/match_board.dart';
 import 'package:neuronova_player/features/gameplay/games/pattern_portal_game.dart';
 import 'package:neuronova_player/features/gameplay/games/number_forge_game.dart';
 import 'package:neuronova_player/features/gameplay/games/word_quest_game.dart';
@@ -115,12 +116,63 @@ void main() {
         );
         await t.pumpAndSettle();
         await tap(t, find.text('Start'));
-        await t.pump(const Duration(seconds: 1));
+        if (kind == GameKind.echoGrid || kind == GameKind.pathRecall) {
+          await t.pump(const Duration(seconds: 1));
+        }
         await t.pump(const Duration(milliseconds: 1400));
         await t.pumpAndSettle();
         expect(match.turn, 1);
         expect(match.players[0].rounds, 1);
         expect(match.players[1].rounds, 0);
+        expect(find.text('Next player'), findsNothing);
+        // A result must not hand off behind the settings route.
+        await tap(t, find.byTooltip('Settings'));
+        await t.pump(const Duration(seconds: 3));
+        await tap(t, find.byTooltip('Back'));
+        expect(find.text('Next player…'), findsOneWidget);
+        await t.pump(const Duration(milliseconds: 1300));
+        await t.pumpAndSettle();
+        expect(find.text('Human’s turn'), findsOneWidget);
+        expect(t.takeException(), isNull);
+      },
+    );
+    testWidgets(
+      '${kind.title}: manual Next and saved automatic setting both work',
+      (t) async {
+        SharedPreferences.setMockInitialValues({});
+        final store = await ProgressStore.open();
+        await store.setAutoHandoffFor(kind.skillKey, false);
+        expect(
+          (await ProgressStore.open()).autoHandoffFor(kind.skillKey),
+          isFalse,
+        );
+        for (final other in GameKind.values.where((k) => k != kind)) {
+          expect(store.autoHandoffFor(other.skillKey), isTrue);
+        }
+        final match = EchoMatch(
+          roundLimit: 1,
+          players: [
+            EchoPlayer('Computer', computer: true, previewSeconds: 1),
+            EchoPlayer('Human', previewSeconds: 0),
+          ],
+        );
+        await t.pumpWidget(
+          MaterialApp(
+            theme: novaTheme(),
+            home: kind == GameKind.echoGrid
+                ? EchoGridScreen(store: store, match: match, seed: 80)
+                : RoundShell(kind: kind, store: store, match: match),
+          ),
+        );
+        await t.pumpAndSettle();
+        await tap(t, find.text('Start'));
+        if (kind == GameKind.echoGrid || kind == GameKind.pathRecall) {
+          await t.pump(const Duration(seconds: 1));
+        }
+        await t.pump(const Duration(milliseconds: 1400));
+        await t.pumpAndSettle();
+        await t.pump(const Duration(seconds: 5));
+        expect(find.text('Human’s turn'), findsNothing);
         expect(
           find.descendant(
             of: find.byKey(const Key('player-seat-0')),
@@ -130,6 +182,22 @@ void main() {
         );
         await tap(t, find.text('Next player'));
         expect(find.text('Human’s turn'), findsOneWidget);
+        await tap(t, find.byTooltip('Settings'));
+        expect(find.text('Tap Next player'), findsOneWidget);
+        await tap(t, find.byKey(const Key('game-turn-change')));
+        await tap(t, find.text('Automatic').last);
+        await tap(t, find.byKey(const Key('save-game-settings')));
+        expect(
+          (await ProgressStore.open()).autoHandoffFor(kind.skillKey),
+          isTrue,
+        );
+        await tap(t, find.text('Start'));
+        await solve(t, kind, 1, 1);
+        expect(match.finished, isTrue);
+        expect(find.text('View results'), findsNothing);
+        await t.pump(const Duration(milliseconds: 1300));
+        await t.pumpAndSettle();
+        expect(find.byType(MatchResults), findsOneWidget);
         expect(t.takeException(), isNull);
       },
     );
@@ -190,16 +258,10 @@ void main() {
             await solve(t, kind, turn, level);
             expect(match.players[index].points, ((turn ~/ count) + 1) * 10);
             expect(match.players[index].level, level + 1);
-            expect(
-              find.descendant(
-                of: find.byKey(Key('player-seat-$index')),
-                matching: find.text(
-                  match.finished ? 'View results' : 'Next player',
-                ),
-              ),
-              findsOneWidget,
-            );
-            await tap(t, find.byKey(Key('seat-action-$index')));
+            expect(find.text('Next player'), findsNothing);
+            expect(find.text('View results'), findsNothing);
+            await t.pump(const Duration(milliseconds: 1300));
+            await t.pumpAndSettle();
             expect(t.takeException(), isNull);
           }
           expect(find.textContaining('tie!'), findsOneWidget);
