@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../../app/theme.dart';
 import '../../../game/rules/path_recall.dart';
 import '../round_shell.dart';
+import '../match_board.dart';
 
 class PathRecallGame extends StatefulWidget {
   const PathRecallGame({
@@ -135,10 +136,10 @@ class _S extends State<PathRecallGame> {
             const SizedBox(height: 12),
             if (previewing)
               if (widget.previewSeconds == 0)
-                FilledButton(
+                TurnActionButton(
                   key: const Key('preview-start'),
                   onPressed: startRecall,
-                  child: const Text('Start'),
+                  label: 'Start',
                 )
               else
                 const SizedBox(
@@ -163,19 +164,10 @@ class _S extends State<PathRecallGame> {
                         : () => setState(moves.removeLast),
                     child: const Text('Undo'),
                   ),
-                  FilledButton(
+                  TurnActionButton(
                     key: const Key('submit'),
                     onPressed: moves.isEmpty || done ? null : submit,
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(150, 48),
-                      textStyle: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    child: Text(
-                      'Submit (${moves.length}/${p.expected.length - 1})',
-                    ),
+                    label: 'Submit (${moves.length}/${p.expected.length - 1})',
                   ),
                 ],
               ),

@@ -179,25 +179,23 @@ class _GameSettingsScreenState extends State<GameSettingsScreen> {
                       color: NovaColors.textSecondary,
                     ),
                   ),
-                  if (game == GameKind.echoGrid)
-                    OutlinedButton.icon(
-                      key: const Key('match-settings'),
-                      onPressed: busy
-                          ? null
-                          : () => save(GameSettingsAction.matchSetup),
-                      icon: const Icon(Icons.group_outlined),
-                      label: const Text('Players & rounds'),
-                    ),
-                  if (game == GameKind.echoGrid)
-                    const Text(
-                      'Start a new match',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: NovaColors.textSecondary,
-                      ),
-                    ),
                 ],
+                OutlinedButton.icon(
+                  key: const Key('match-settings'),
+                  onPressed: busy
+                      ? null
+                      : () => save(GameSettingsAction.matchSetup),
+                  icon: const Icon(Icons.group_outlined),
+                  label: const Text('Players & rounds'),
+                ),
+                const Text(
+                  'Start a new match',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: NovaColors.textSecondary,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 const Divider(height: 1),
                 ExpansionTile(

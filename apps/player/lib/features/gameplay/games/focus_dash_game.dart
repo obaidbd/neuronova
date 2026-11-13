@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app/theme.dart';
 import '../../../game/rules/focus_dash.dart';
 import '../round_shell.dart';
+import '../match_board.dart';
 import '../shapes.dart';
 
 class FocusDashGame extends StatefulWidget {
@@ -99,10 +100,10 @@ class _S extends State<FocusDashGame> {
           ],
         ),
         const SizedBox(height: 16),
-        FilledButton(
+        TurnActionButton(
           key: const Key('submit'),
           onPressed: selected.isEmpty ? null : _submit,
-          child: Text('Submit (${selected.length})'),
+          label: 'Submit (${selected.length})',
         ),
       ],
     );

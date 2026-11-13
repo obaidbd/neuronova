@@ -141,3 +141,7 @@ next to Settings. Game names and full metric labels remain available through
 tooltips and accessibility labels. The separate large point panel and round/level
 rows are removed, leaving more room for the board. Multiplayer player seats stay
 around the grid; the header shows the current player's points and level.
+
+### Shared-device matches in every game
+
+All six games expose Players & rounds in their in-game settings, with solo, 2–4 friends, or computer play. Two seats sit above/below the board; three/four occupy fixed corners. Start, Submit and Next player stay beside the active player's name, and seats stay visible while tall puzzles scroll in the middle. At each handoff the puzzle and its clock wait for that player's Start, without an additional readiness page. A zero-second memory preview still waits for Start before recall. Group points and levels are independent of saved solo progress; fixed rounds end with the existing level-first standings.

@@ -4,9 +4,17 @@ import '../../core/progress_store.dart';
 import '../../app/theme.dart';
 import '../../game/rules/echo_match.dart';
 import 'echo_grid_screen.dart';
+import 'round_shell.dart';
+import '../../core/game_kind.dart';
 
 class EchoSetupScreen extends StatefulWidget {
-  const EchoSetupScreen({super.key, required this.store, this.tierOverride});
+  const EchoSetupScreen({
+    super.key,
+    required this.store,
+    this.tierOverride,
+    this.kind = GameKind.echoGrid,
+  });
+  final GameKind kind;
   final ProgressStore store;
   final int? tierOverride;
   @override
@@ -18,7 +26,14 @@ class _EchoSetupScreenState extends State<EchoSetupScreen> {
   int count = 2;
   int rounds = 10;
   bool starting = false;
-  late final seconds = List.generate(4, widget.store.echoPreviewSeconds);
+  late final seconds = List.generate(
+    4,
+    (i) => widget.kind == GameKind.echoGrid
+        ? widget.store.echoPreviewSeconds(i)
+        : widget.store.previewSecondsFor(widget.kind.skillKey) ?? 4,
+  );
+  bool get hasPreview =>
+      widget.kind == GameKind.echoGrid || widget.kind == GameKind.pathRecall;
   final names = List.generate(
     4,
     (i) => TextEditingController(text: 'Player ${i + 1}'),
@@ -40,8 +55,14 @@ class _EchoSetupScreenState extends State<EchoSetupScreen> {
   Future<void> start() async {
     setState(() => starting = true);
     try {
-      for (var i = 0; i < seats; i++) {
+      for (var i = 0; widget.kind == GameKind.echoGrid && i < seats; i++) {
         await widget.store.setEchoPreviewSeconds(i, seconds[i]);
+      }
+      if (widget.kind == GameKind.pathRecall && seats == 1) {
+        await widget.store.setPreviewSecondsFor(
+          widget.kind.skillKey,
+          seconds[0],
+        );
       }
       if (!mounted) return;
       final match = EchoMatch(
@@ -56,17 +77,26 @@ class _EchoSetupScreenState extends State<EchoSetupScreen> {
                 : names[i].text.trim(),
             computer: mode == 'Computer' && i == 1,
             previewSeconds: seconds[i],
-            level: mode == 'Solo' ? widget.store.levelFor('visual_memory') : 1,
+            level: mode == 'Solo'
+                ? widget.store.levelFor(widget.kind.skillKey)
+                : 1,
           ),
         ),
       );
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => EchoGridScreen(
-            store: widget.store,
-            match: match,
-            tierOverride: widget.tierOverride,
-          ),
+          builder: (_) => widget.kind == GameKind.echoGrid
+              ? EchoGridScreen(
+                  store: widget.store,
+                  match: match,
+                  tierOverride: widget.tierOverride,
+                )
+              : RoundShell(
+                  kind: widget.kind,
+                  store: widget.store,
+                  match: match,
+                  tierOverride: widget.tierOverride,
+                ),
         ),
       );
     } finally {
@@ -157,24 +187,26 @@ class _EchoSetupScreenState extends State<EchoSetupScreen> {
                             counterText: '',
                           ),
                         ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Preview · ${seconds[i]}s (0 = manual)',
-                        style: const TextStyle(
-                          color: NovaColors.textSecondary,
-                          fontSize: 13,
+                      if (hasPreview) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          'Preview · ${seconds[i]}s (0 = manual)',
+                          style: const TextStyle(
+                            color: NovaColors.textSecondary,
+                            fontSize: 13,
+                          ),
                         ),
-                      ),
-                      Slider(
-                        key: Key('preview-$i'),
-                        min: 0,
-                        max: 15,
-                        divisions: 15,
-                        value: seconds[i].toDouble(),
-                        label: '${seconds[i]}s',
-                        onChanged: (v) =>
-                            setState(() => seconds[i] = v.round()),
-                      ),
+                        Slider(
+                          key: Key('preview-$i'),
+                          min: 0,
+                          max: 15,
+                          divisions: 15,
+                          value: seconds[i].toDouble(),
+                          label: '${seconds[i]}s',
+                          onChanged: (v) =>
+                              setState(() => seconds[i] = v.round()),
+                        ),
+                      ],
                     ],
                   ),
                 ),

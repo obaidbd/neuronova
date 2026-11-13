@@ -63,10 +63,13 @@ void main() {
           home: EchoGridScreen(store: store, match: match, seed: 80),
         ),
       );
+      await t.pumpAndSettle();
       for (var seat = 0; seat < 4; seat++) {
         expect(find.text('P${seat + 1}’s turn'), findsOneWidget);
         expect(find.byKey(const Key('tile-0')), findsNothing);
-        await t.tap(find.text('I’m ready'));
+        expect(find.text('I’m ready'), findsNothing);
+        await t.tap(find.text('Start'));
+        await t.pump();
         await t.pump();
         await t.pump(Duration(seconds: seat + 1, milliseconds: -100));
         expect(find.text('Remember the glowing tiles'), findsOneWidget);
@@ -75,7 +78,7 @@ void main() {
         final puzzle = EchoGridPuzzle.generate(tier: 1, seed: 80 + seat);
         for (final tile in puzzle.targets) {
           await t.tap(find.byKey(Key('tile-$tile')));
-          await t.pump();
+          await t.pumpAndSettle();
         }
         await t.tap(find.text('Submit (3/3)'));
         await t.pumpAndSettle();

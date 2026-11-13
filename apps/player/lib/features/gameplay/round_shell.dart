@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -7,6 +8,14 @@ import '../../core/game_kind.dart';
 import '../catalog/game_presentation.dart';
 import '../catalog/game_settings_screen.dart';
 import 'game_header.dart';
+import 'match_board.dart';
+import 'echo_setup_screen.dart';
+import '../../game/rules/echo_match.dart';
+import '../../game/rules/pattern_portal.dart';
+import '../../game/rules/number_forge.dart';
+import '../../game/rules/word_quest.dart';
+import '../../game/rules/focus_dash.dart';
+import '../../game/rules/path_recall.dart';
 import '../../core/progress_store.dart';
 import '../../game/rules/adaptive.dart';
 import '../../game/rules/scoring.dart';
@@ -38,10 +47,12 @@ class RoundShell extends StatefulWidget {
     required this.kind,
     required this.store,
     this.tierOverride,
+    this.match,
   });
   final GameKind kind;
   final ProgressStore store;
   final int? tierOverride;
+  final EchoMatch? match;
 
   @override
   State<RoundShell> createState() => _RoundShellState();
@@ -59,6 +70,69 @@ class _RoundShellState extends State<RoundShell> {
   int? activeTierOverride;
   bool settingsOpen = false;
   bool finishing = false;
+  bool waiting = false, finished = false;
+  EchoPlayer? player;
+  Timer? computerTimer;
+  bool get sharedBoard => (widget.match?.players.length ?? 1) > 1;
+
+  @override
+  void dispose() {
+    computerTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startTurn() {
+    if (!waiting) return;
+    setState(() => waiting = false);
+    if (widget.kind != GameKind.pathRecall || player?.computer == true) {
+      clock.start();
+    }
+    if (player?.computer == true) {
+      final preview = widget.kind == GameKind.pathRecall
+          ? max(1, player!.previewSeconds) * 1000
+          : 0;
+      computerTimer = Timer(Duration(milliseconds: preview + 1400), () {
+        if (mounted && !settingsOpen) _finish(_computerOutcome());
+      });
+    }
+  }
+
+  RoundOutcome _computerOutcome() {
+    final rng = Random(seed ^ 0x5a17);
+    final succeeds =
+        rng.nextDouble() < (0.92 - (playerLevel - 1) * .025).clamp(.45, .92);
+    bool correct;
+    switch (widget.kind) {
+      case GameKind.patternPortal:
+        final p = PatternPuzzle.generate(tier: tier, seed: seed);
+        correct = p.isCorrect(
+          succeeds ? p.answerIndex : (p.answerIndex + 1) % p.options.length,
+        );
+      case GameKind.numberForge:
+        final p = NumberForgePuzzle.generate(tier: tier, seed: seed);
+        final answer = p.options.indexWhere(p.fits);
+        correct = p.isCorrect(
+          succeeds ? answer : (answer + 1) % p.options.length,
+        );
+      case GameKind.wordQuest:
+        final p = WordPuzzle.generate(tier: tier, seed: seed);
+        final answer = p.options.indexWhere((it) => it.id == p.item.id);
+        correct = p.isCorrect(
+          succeeds ? answer : (answer + 1) % p.options.length,
+        );
+      case GameKind.focusDash:
+        final p = FocusPuzzle.generate(tier: tier, seed: seed);
+        final result = p.evaluate(succeeds ? p.targets : <int>{});
+        return RoundOutcome(accuracy: result.accuracy, perfect: result.perfect);
+      case GameKind.pathRecall:
+        final p = PathPuzzle.generate(tier: tier, seed: seed);
+        final result = p.evaluate(succeeds ? p.expected.sublist(1) : <int>[]);
+        return RoundOutcome(accuracy: result.accuracy, perfect: result.perfect);
+      case GameKind.echoGrid:
+        throw StateError('Echo Grid has its own screen');
+    }
+    return RoundOutcome(accuracy: correct ? 1 : 0, perfect: correct);
+  }
 
   @override
   void initState() {
@@ -71,19 +145,32 @@ class _RoundShellState extends State<RoundShell> {
   }
 
   void _next() {
-    tier = activeTierOverride ?? skill.tier;
-    playerLevel = widget.store.levelFor(widget.kind.skillKey);
+    computerTimer?.cancel();
+    if (sharedBoard && widget.match!.finished) {
+      setState(() => finished = true);
+      return;
+    }
+    player = widget.match?.current;
+    tier = activeTierOverride ?? (sharedBoard ? player!.level : skill.tier);
+    playerLevel = sharedBoard
+        ? player!.level
+        : widget.store.levelFor(widget.kind.skillKey);
     settingsOpen = false;
     seed = Random().nextInt(1 << 30);
     roundId = '${DateTime.now().microsecondsSinceEpoch}-$seed';
-    roundNumber = widget.store.roundsFor(widget.kind.skillKey) + 1;
+    roundNumber = sharedBoard
+        ? widget.match!.round
+        : widget.store.roundsFor(widget.kind.skillKey) + 1;
     clock = Stopwatch();
-    if (widget.kind != GameKind.pathRecall) clock.start();
+    waiting = sharedBoard;
+    if (!waiting && widget.kind != GameKind.pathRecall) clock.start();
     setState(() => outcome = null);
   }
 
   Future<void> _finish(RoundOutcome o) async {
-    if (outcome != null || finishing) return;
+    if (outcome != null || finishing || waiting || finished || settingsOpen) {
+      return;
+    }
     setState(() => finishing = true); // ignore duplicate completion events
     clock.stop();
     final untimed = widget.store.untimedFor(widget.kind.skillKey);
@@ -94,30 +181,37 @@ class _RoundShellState extends State<RoundShell> {
       targetMs: widget.kind.targetMs(tier),
       actualMs: clock.elapsedMilliseconds,
     );
-    // Manual tier override is test mode: it never changes the real skill.
-    if (activeTierOverride == null) {
-      skill.record(RoundRecord(accuracy: o.accuracy, success: o.perfect));
+    if (sharedBoard) {
+      widget.match!.record(score: s, perfect: o.perfect);
+    } else {
+      // Manual tier override is test mode: it never changes the real skill.
+      if (activeTierOverride == null) {
+        skill.record(RoundRecord(accuracy: o.accuracy, success: o.perfect));
+      }
+      await widget.store.commitRound(
+        roundId: roundId,
+        score: s,
+        xp: 0,
+        levelUp: o.perfect,
+        skill: skill,
+        skillKey: widget.kind.skillKey,
+      );
     }
-    await widget.store.commitRound(
-      roundId: roundId,
-      score: s,
-      xp: 0,
-      levelUp: o.perfect,
-      skill: skill,
-      skillKey: widget.kind.skillKey,
-    );
     if (!mounted) return;
     setState(() {
       finishing = false;
       outcome = o;
       score = s;
-      playerLevel = widget.store.levelFor(widget.kind.skillKey);
+      playerLevel = sharedBoard
+          ? player!.level
+          : widget.store.levelFor(widget.kind.skillKey);
     });
   }
 
   Future<void> openSettings() async {
     if (finishing) return;
     clock.stop();
+    computerTimer?.cancel();
     setState(() => settingsOpen = true);
     final action = await Navigator.of(context).push<GameSettingsAction>(
       MaterialPageRoute(
@@ -128,6 +222,18 @@ class _RoundShellState extends State<RoundShell> {
     if (!mounted) return;
     if (action != null) {
       activeTierOverride = widget.store.practiceTierFor(widget.kind.skillKey);
+    }
+    if (action == GameSettingsAction.matchSetup) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => EchoSetupScreen(
+            store: widget.store,
+            kind: widget.kind,
+            tierOverride: activeTierOverride,
+          ),
+        ),
+      );
+      return;
     }
     if (outcome == null) {
       _next();
@@ -169,7 +275,11 @@ class _RoundShellState extends State<RoundShell> {
         );
       case GameKind.pathRecall:
         return PathRecallGame(
-          previewSeconds: widget.store.previewSecondsFor(widget.kind.skillKey),
+          previewSeconds: sharedBoard
+              ? (player!.computer
+                    ? max(1, player!.previewSeconds)
+                    : player!.previewSeconds)
+              : widget.store.previewSecondsFor(widget.kind.skillKey),
           onRecallStarted: () {
             clock.reset();
             clock.start();
@@ -189,8 +299,11 @@ class _RoundShellState extends State<RoundShell> {
     return Scaffold(
       appBar: GameHeader(
         kind: widget.kind,
-        points: widget.store.pointsFor(widget.kind.skillKey),
+        points: sharedBoard
+            ? player!.points
+            : widget.store.pointsFor(widget.kind.skillKey),
         round: roundNumber,
+        roundLimit: sharedBoard ? widget.match!.roundLimit : null,
         level: playerLevel,
         difficulty: difficultyName(activeTierOverride),
         onSettings: finishing ? null : openSettings,
@@ -201,11 +314,53 @@ class _RoundShellState extends State<RoundShell> {
             constraints: const BoxConstraints(maxWidth: 520),
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: outcome == null
-                  ? (settingsOpen ? const SizedBox() : _game())
-                  : _result(),
+              child: finished
+                  ? MatchResults(match: widget.match!)
+                  : sharedBoard
+                  ? MatchBoard(
+                      match: widget.match!,
+                      player: player!,
+                      child: _turnContent(),
+                    )
+                  : _turnContent(),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _turnContent() {
+    if (settingsOpen) return const SizedBox();
+    if (waiting) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            '${player!.name}’s turn',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 20,
+              color: NovaColors.textSecondary,
+            ),
+          ),
+          TurnActionButton(label: 'Start', onPressed: _startTurn),
+        ],
+      );
+    }
+    if (outcome != null) return _result();
+    final game = IgnorePointer(
+      ignoring: player?.computer == true,
+      child: _game(),
+    );
+    if (!sharedBoard) return game;
+    // Seats remain visible while tall puzzles can scroll between them.
+    if (widget.kind == GameKind.pathRecall) return game;
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: game,
         ),
       ),
     );
@@ -214,6 +369,52 @@ class _RoundShellState extends State<RoundShell> {
   Widget _result() {
     final o = outcome!;
     final accent = o.perfect ? widget.kind.accent : NovaColors.gold;
+    if (sharedBoard) {
+      return Center(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                o.perfect ? Icons.check_circle_rounded : Icons.refresh_rounded,
+                size: 40,
+                color: accent,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                o.perfect ? 'Gate opened!' : 'Good try!',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if (o.message.isNotEmpty)
+                Text(
+                  o.message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: NovaColors.textSecondary,
+                  ),
+                ),
+              Text(
+                '$score',
+                key: const Key('result-score'),
+                style: TextStyle(
+                  fontSize: 32,
+                  color: accent,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              TurnActionButton(
+                label: widget.match!.finished ? 'View results' : 'Next player',
+                onPressed: _next,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 20),
