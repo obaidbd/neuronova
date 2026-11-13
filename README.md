@@ -133,3 +133,11 @@ upper bound. Incorrect rounds and difficulty changes do not reduce that level.
 The settings offer **Auto, Easy, Normal, Hard**. Auto keeps adaptive puzzle
 difficulty; the other choices use a fixed preset without capping player levels.
 Puzzle generators keep their existing safe bounds for screen size and content.
+
+## Compact game header
+
+All six games share one header with the game icon, point number, round and level
+next to Settings. Game names and full metric labels remain available through
+tooltips and accessibility labels. The separate large point panel and round/level
+rows are removed, leaving more room for the board. Multiplayer player seats stay
+around the grid; the header shows the current player's points and level.

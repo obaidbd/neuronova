@@ -23,7 +23,10 @@ void main() {
           ),
         );
         await t.pump(const Duration(milliseconds: 50));
-        expect(find.text('Lv 1 · ${difficultyName(tier)}'), findsOneWidget);
+        expect(
+          find.byTooltip('Level 1 · ${difficultyName(tier)}'),
+          findsOneWidget,
+        );
         await t.pumpWidget(const SizedBox()); // dispose timers
       }
     });

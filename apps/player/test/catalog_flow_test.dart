@@ -29,7 +29,7 @@ void main() {
       expect(find.byType(GameSettingsScreen), findsNothing);
       expect(find.byKey(const Key('game-settings')), findsOneWidget);
       expect(find.byKey(const Key('game-score-bar')), findsOneWidget);
-      expect(find.text(game.title), findsOneWidget);
+      expect(find.byTooltip(game.title), findsOneWidget);
       expect(store.completedRounds, 0);
       await t.tap(find.byKey(const Key('game-settings')));
       await t.pumpAndSettle();
@@ -76,7 +76,7 @@ void main() {
       await t.tap(save);
       await t.pumpAndSettle();
       expect(find.byType(GameSettingsScreen), findsNothing);
-      expect(find.text('Lv 1 · Hard'), findsOneWidget);
+      expect(find.byTooltip('Level 1 · Hard'), findsOneWidget);
       final saved = await ProgressStore.open();
       expect(saved.practiceTierFor('number_reasoning'), 8);
       expect(saved.untimedFor('number_reasoning'), isTrue);

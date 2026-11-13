@@ -47,7 +47,7 @@ void main() {
       expect(find.text('View results'), findsNothing);
       await t.tap(find.text('Next round'));
       await t.pumpAndSettle();
-      expect(find.text('Round 2 · Continuous'), findsOneWidget);
+      expect(find.text('R2'), findsOneWidget);
       expect(
         t.widget<Text>(find.byKey(const Key('game-total-score'))).data,
         '10',

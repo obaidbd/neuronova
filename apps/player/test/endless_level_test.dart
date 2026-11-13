@@ -63,7 +63,7 @@ void main() {
           home: RoundShell(kind: GameKind.numberForge, store: store),
         ),
       );
-      expect(find.text('Lv 43 · Hard'), findsOneWidget);
+      expect(find.byTooltip('Level 43 · Hard'), findsOneWidget);
       expect(find.textContaining('XP'), findsNothing);
       await t.tap(find.byKey(const Key('game-settings')));
       await t.pumpAndSettle();
@@ -84,7 +84,7 @@ void main() {
       await t.ensureVisible(save);
       await t.tap(save);
       await t.pumpAndSettle();
-      expect(find.text('Lv 43 · Normal'), findsOneWidget);
+      expect(find.byTooltip('Level 43 · Normal'), findsOneWidget);
       expect(store.practiceTierFor('number_reasoning'), 5);
       expect(store.levelFor('number_reasoning'), 43);
       expect(t.takeException(), isNull);

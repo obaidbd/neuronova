@@ -6,7 +6,7 @@ import '../../app/theme.dart';
 import '../../core/game_kind.dart';
 import '../catalog/game_presentation.dart';
 import '../catalog/game_settings_screen.dart';
-import 'game_score_bar.dart';
+import 'game_header.dart';
 import '../../core/progress_store.dart';
 import '../../game/rules/adaptive.dart';
 import '../../game/rules/scoring.dart';
@@ -187,39 +187,13 @@ class _RoundShellState extends State<RoundShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 52,
-        title: Row(
-          children: [
-            Icon(
-              widget.kind.icon,
-              key: const Key('header-game-icon'),
-              color: widget.kind.accent,
-              size: 22,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                widget.kind.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 21,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.transparent,
-        actions: [
-          IconButton(
-            key: const Key('game-settings'),
-            tooltip: 'Settings',
-            onPressed: finishing ? null : openSettings,
-            icon: const Icon(Icons.settings_outlined),
-          ),
-        ],
+      appBar: GameHeader(
+        kind: widget.kind,
+        points: widget.store.pointsFor(widget.kind.skillKey),
+        round: roundNumber,
+        level: playerLevel,
+        difficulty: difficultyName(activeTierOverride),
+        onSettings: finishing ? null : openSettings,
       ),
       body: SafeArea(
         child: Center(
@@ -227,43 +201,9 @@ class _RoundShellState extends State<RoundShell> {
             constraints: const BoxConstraints(maxWidth: 520),
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  GameScoreBar(
-                    store: widget.store,
-                    skillKey: widget.kind.skillKey,
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Text(
-                        'Round $roundNumber',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: NovaColors.textSecondary,
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        'Lv $playerLevel · ${difficultyName(activeTierOverride)}',
-                        key: const Key('tier-label'),
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: NovaColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Expanded(
-                    child: outcome == null
-                        ? (settingsOpen ? const SizedBox() : _game())
-                        : _result(),
-                  ),
-                ],
-              ),
+              child: outcome == null
+                  ? (settingsOpen ? const SizedBox() : _game())
+                  : _result(),
             ),
           ),
         ),

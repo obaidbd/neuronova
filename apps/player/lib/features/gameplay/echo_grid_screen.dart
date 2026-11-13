@@ -12,7 +12,8 @@ import '../../game/rules/scoring.dart';
 import '../../core/game_kind.dart';
 import '../catalog/game_settings_screen.dart';
 import 'echo_setup_screen.dart';
-import 'game_score_bar.dart';
+import 'game_header.dart';
+import '../../game/rules/difficulty.dart';
 
 enum _Phase { ready, preview, recall, result, finished }
 
@@ -251,36 +252,18 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Row(
-        children: [
-          const Icon(
-            Icons.grid_view,
-            key: Key('header-game-icon'),
-            color: NovaColors.emerald,
-            size: 22,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              widget.tutorial ? 'First Gate' : 'Echo Grid',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-      toolbarHeight: 48,
-      backgroundColor: Colors.transparent,
-      actions: [
-        if (!widget.tutorial)
-          IconButton(
-            key: const Key('game-settings'),
-            tooltip: 'Settings',
-            onPressed: committing ? null : openSettings,
-            icon: const Icon(Icons.settings_outlined),
-          ),
-      ],
+    appBar: GameHeader(
+      kind: GameKind.echoGrid,
+      title: widget.tutorial ? 'First Gate' : null,
+      points: sharedBoard
+          ? player.points
+          : widget.store.pointsFor('visual_memory'),
+      round: playedRound,
+      roundLimit: sharedBoard ? match.roundLimit : null,
+      level: player.level,
+      difficulty: difficultyName(activeTierOverride),
+      showSettings: !widget.tutorial,
+      onSettings: committing ? null : openSettings,
     ),
     body: SafeArea(
       child: Align(
@@ -292,25 +275,6 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (sharedBoard)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      phase == _Phase.finished
-                          ? 'FINAL STANDINGS'
-                          : 'ROUND $playedRound / ${match.roundLimit ?? "∞"}',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        letterSpacing: 1.5,
-                        color: NovaColors.textSecondary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  )
-                else
-                  scoreboard(),
-                const SizedBox(height: 12),
                 if (phase == _Phase.finished)
                   finalPanel()
                 else ...[
@@ -353,7 +317,7 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
 
   double boardSide(double width) => min(
     width,
-    max(196.0, MediaQuery.sizeOf(context).height - (sharedBoard ? 500 : 410)),
+    max(196.0, MediaQuery.sizeOf(context).height - (sharedBoard ? 480 : 340)),
   );
 
   Widget boardSurface(Widget child) => LayoutBuilder(
@@ -542,29 +506,6 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
       ),
     );
   }
-
-  Widget scoreboard() => Column(
-    children: [
-      GameScoreBar(store: widget.store, skillKey: 'visual_memory'),
-      const SizedBox(height: 10),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Round $playedRound${match.roundLimit == null ? " · Continuous" : " / ${match.roundLimit}"}',
-            style: const TextStyle(
-              color: NovaColors.textSecondary,
-              fontSize: 12,
-            ),
-          ),
-          Text(
-            'Lv ${player.level}',
-            style: const TextStyle(color: NovaColors.emerald, fontSize: 12),
-          ),
-        ],
-      ),
-    ],
-  );
 
   Widget readyPanel() => Center(
     child: SingleChildScrollView(
