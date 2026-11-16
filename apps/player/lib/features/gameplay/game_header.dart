@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/theme.dart';
 import '../../core/game_kind.dart';
 import '../catalog/game_presentation.dart';
+import 'round_journey.dart';
 
 /// A single compact header shared by every game. Full labels remain accessible.
 class GameHeader extends StatelessWidget implements PreferredSizeWidget {
@@ -27,7 +28,7 @@ class GameHeader extends StatelessWidget implements PreferredSizeWidget {
   final bool showSettings;
 
   @override
-  Size get preferredSize => const Size.fromHeight(54);
+  Size get preferredSize => const Size.fromHeight(57);
 
   @override
   Widget build(BuildContext context) => AppBar(
@@ -117,6 +118,17 @@ class GameHeader extends StatelessWidget implements PreferredSizeWidget {
           ),
         ),
       ],
+    ),
+    bottom: PreferredSize(
+      preferredSize: const Size.fromHeight(3),
+      child: LinearProgressIndicator(
+        value: level % 5 / 5,
+        minHeight: 3,
+        color: kind.accent.withValues(alpha: .75),
+        backgroundColor: NovaColors.surface,
+        semanticsLabel:
+            'Level $level. Next checkpoint level ${nextCheckpoint(level)}',
+      ),
     ),
     actions: [
       if (showSettings)

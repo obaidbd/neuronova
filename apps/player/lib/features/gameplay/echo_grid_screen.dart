@@ -13,6 +13,7 @@ import '../../core/game_kind.dart';
 import '../catalog/game_settings_screen.dart';
 import 'echo_setup_screen.dart';
 import 'game_header.dart';
+import 'round_journey.dart';
 import 'match_board.dart';
 import '../../game/rules/difficulty.dart';
 
@@ -293,6 +294,23 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
       showSettings: !widget.tutorial,
       onSettings: committing ? null : openSettings,
     ),
+    bottomNavigationBar: !sharedBoard && phase == _Phase.result
+        ? SafeArea(
+            minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: FilledButton(
+              onPressed: widget.tutorial
+                  ? () => Navigator.of(context).pop(true)
+                  : advance,
+              child: Text(
+                widget.tutorial
+                    ? 'Continue'
+                    : match.finished
+                    ? 'View results'
+                    : 'Next round',
+              ),
+            ),
+          )
+        : null,
     body: SafeArea(
       child: Align(
         alignment: Alignment.topCenter,
@@ -484,7 +502,12 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: NovaColors.blue.withValues(alpha: .25)),
+            border: Border.all(
+              color: phase == _Phase.recall && chosen
+                  ? NovaColors.text.withValues(alpha: .75)
+                  : NovaColors.blue.withValues(alpha: .22),
+              width: chosen ? 2 : 1,
+            ),
           ),
           child: icon == null
               ? null
@@ -504,6 +527,15 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
           color: NovaColors.gold,
         ),
       ),
+      if (!sharedBoard && !widget.tutorial) ...[
+        const SizedBox(height: 14),
+        RoundJourney(
+          kind: GameKind.echoGrid,
+          level: player.level,
+          round: playedRound,
+          perfect: result!.perfect,
+        ),
+      ],
       const SizedBox(height: 12),
       Wrap(
         spacing: 12,
@@ -518,7 +550,7 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
                 color: NovaColors.textSecondary,
               ),
             )
-          else
+          else if (sharedBoard)
             TurnActionButton(
               onPressed: widget.tutorial
                   ? () => Navigator.of(context).pop(true)

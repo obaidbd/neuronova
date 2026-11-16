@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../app/theme.dart';
 import '../../../game/rules/pattern_portal.dart';
 import '../round_shell.dart';
+import '../answer_cards.dart';
+import '../../../core/game_kind.dart';
+import '../../catalog/game_presentation.dart';
 import '../shapes.dart';
 
 class PatternPortalGame extends StatefulWidget {
@@ -67,33 +70,14 @@ class _S extends State<PatternPortalGame> {
           ],
         ),
         const SizedBox(height: 28),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          alignment: WrapAlignment.center,
-          children: [
-            for (var i = 0; i < p.options.length; i++)
-              InkWell(
-                key: Key('option-$i'),
-                onTap: () => _pick(i),
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  width: 84,
-                  height: 84,
-                  decoration: BoxDecoration(
-                    color: NovaColors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: ShapeChip(
-                      p.options[i].shape,
-                      p.options[i].color,
-                      size: 40,
-                    ),
-                  ),
-                ),
-              ),
-          ],
+        AnswerCards(
+          count: p.options.length,
+          accent: GameKind.patternPortal.accent,
+          onPick: _pick,
+          itemBuilder: (i) =>
+              ShapeChip(p.options[i].shape, p.options[i].color, size: 36),
+          labelBuilder: (i) =>
+              '${colorNames[p.options[i].color]} ${shapeNames[p.options[i].shape]}',
         ),
       ],
     );

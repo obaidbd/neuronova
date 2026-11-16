@@ -98,7 +98,7 @@ class _S extends State<PathRecallGame> {
           : 600.0;
       final side = min(
         constraints.maxWidth,
-        max(p.size * 32.0, availableHeight - 175),
+        max(p.size * 32.0, availableHeight - 205),
       );
       return SingleChildScrollView(
         child: Column(
@@ -114,6 +114,31 @@ class _S extends State<PathRecallGame> {
               style: const TextStyle(
                 fontSize: 18,
                 color: NovaColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              previewing
+                  ? '${p.expected.length - 1} steps · ${p.size} × ${p.size}'
+                  : '${moves.length}/${p.expected.length - 1} steps',
+              style: const TextStyle(fontSize: 12, color: NovaColors.gold),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: side,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: previewing
+                      ? 1
+                      : moves.length / (p.expected.length - 1),
+                  minHeight: 3,
+                  color: NovaColors.blue,
+                  backgroundColor: NovaColors.surface,
+                  semanticsLabel: previewing
+                      ? 'Route preview'
+                      : 'Route steps selected',
+                ),
               ),
             ),
             const SizedBox(height: 12),

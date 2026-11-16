@@ -42,19 +42,31 @@ class _S extends State<FocusDashGame> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Wrap(
-          alignment: WrapAlignment.center,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Text(
-              'Tap every ${colorNames[p.targetColor]} ${shapeNames[p.targetShape]}  ',
-              style: const TextStyle(
-                fontSize: 20,
-                color: NovaColors.textSecondary,
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: NovaColors.gold.withValues(alpha: .07),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: NovaColors.gold.withValues(alpha: .18)),
+          ),
+          child: Row(
+            children: [
+              ShapeChip(
+                p.targetShape,
+                p.targetColor,
+                size: 28,
+                showName: false,
               ),
-            ),
-            ShapeChip(p.targetShape, p.targetColor, size: 28, showName: false),
-          ],
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Tap every ${colorNames[p.targetColor]} ${shapeNames[p.targetShape]}',
+                  style: const TextStyle(fontSize: 16, color: NovaColors.text),
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 16),
         GridView.count(
@@ -65,41 +77,54 @@ class _S extends State<FocusDashGame> {
           physics: const NeverScrollableScrollPhysics(),
           children: [
             for (var i = 0; i < p.items.length; i++)
-              InkWell(
-                key: Key('item-$i'),
-                onTap: () => setState(
-                  () => selected.contains(i)
-                      ? selected.remove(i)
-                      : selected.add(i),
-                ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: NovaColors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: selected.contains(i)
-                          ? NovaColors.text
-                          : Colors.transparent,
-                      width: 3,
-                    ),
+              Semantics(
+                button: true,
+                selected: selected.contains(i),
+                label:
+                    '${colorNames[p.items[i].color]} ${shapeNames[p.items[i].shape]}',
+                child: InkWell(
+                  key: Key('item-$i'),
+                  onTap: () => setState(
+                    () => selected.contains(i)
+                        ? selected.remove(i)
+                        : selected.add(i),
                   ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      ShapeChip(p.items[i].shape, p.items[i].color, size: 34),
-                      if (selected.contains(i))
-                        const Positioned(
-                          top: 4,
-                          right: 4,
-                          child: Icon(Icons.check_circle, size: 18),
-                        ),
-                    ],
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: selected.contains(i)
+                          ? NovaColors.blue.withValues(alpha: .15)
+                          : NovaColors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: selected.contains(i)
+                            ? NovaColors.text
+                            : Colors.transparent,
+                        width: 3,
+                      ),
+                    ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        ShapeChip(p.items[i].shape, p.items[i].color, size: 34),
+                        if (selected.contains(i))
+                          const Positioned(
+                            top: 4,
+                            right: 4,
+                            child: Icon(Icons.check_circle, size: 18),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 10),
+        Text(
+          '${selected.length} selected',
+          style: const TextStyle(fontSize: 12, color: NovaColors.textSecondary),
+        ),
+        const SizedBox(height: 10),
         TurnActionButton(
           key: const Key('submit'),
           onPressed: selected.isEmpty ? null : _submit,

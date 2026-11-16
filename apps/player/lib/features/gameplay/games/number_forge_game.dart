@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../app/theme.dart';
 import '../../../game/rules/number_forge.dart';
 import '../round_shell.dart';
+import '../answer_cards.dart';
+import '../../../core/game_kind.dart';
+import '../../catalog/game_presentation.dart';
 
 class NumberForgeGame extends StatefulWidget {
   const NumberForgeGame({
@@ -50,29 +53,34 @@ class _S extends State<NumberForgeGame> {
         const SizedBox(height: 20),
         Semantics(
           label: p.display.replaceAll('?', 'blank'),
-          child: Text(
-            p.display,
-            key: const Key('equation'),
-            style: const TextStyle(
-              fontSize: 44,
-              fontWeight: FontWeight.w800,
-              color: NovaColors.gold,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              p.display,
+              key: const Key('equation'),
+              style: const TextStyle(
+                fontSize: 44,
+                fontWeight: FontWeight.w800,
+                color: NovaColors.gold,
+              ),
             ),
           ),
         ),
         const SizedBox(height: 28),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          alignment: WrapAlignment.center,
-          children: [
-            for (var i = 0; i < p.options.length; i++)
-              FilledButton(
-                key: Key('option-$i'),
-                onPressed: () => _pick(i),
-                child: Text(p.options[i], style: const TextStyle(fontSize: 24)),
-              ),
-          ],
+        AnswerCards(
+          count: p.options.length,
+          accent: GameKind.numberForge.accent,
+          onPick: _pick,
+          itemHeight: 72,
+          labelBuilder: (i) => p.options[i],
+          itemBuilder: (i) => Text(
+            p.options[i],
+            style: TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.w700,
+              color: GameKind.numberForge.accent,
+            ),
+          ),
         ),
       ],
     );

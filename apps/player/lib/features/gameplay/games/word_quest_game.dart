@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../app/theme.dart';
 import '../../../game/rules/word_quest.dart';
 import '../round_shell.dart';
+import '../answer_cards.dart';
+import '../../../core/game_kind.dart';
+import '../../catalog/game_presentation.dart';
 
 class WordQuestGame extends StatefulWidget {
   const WordQuestGame({
@@ -47,6 +50,19 @@ class _S extends State<WordQuestGame> {
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 18, color: NovaColors.textSecondary),
         ),
+        const SizedBox(height: 12),
+        Text(
+          switch (p.lang) {
+            'bn' => 'বাংলা',
+            'ar' => 'العربية',
+            _ => 'ENGLISH',
+          },
+          style: TextStyle(
+            fontSize: 11,
+            letterSpacing: 1.2,
+            color: GameKind.wordQuest.accent,
+          ),
+        ),
         const SizedBox(height: 20),
         Directionality(
           textDirection: p.rtl ? TextDirection.rtl : TextDirection.ltr,
@@ -61,35 +77,13 @@ class _S extends State<WordQuestGame> {
           ),
         ),
         const SizedBox(height: 28),
-        Wrap(
-          spacing: 14,
-          runSpacing: 14,
-          alignment: WrapAlignment.center,
-          children: [
-            for (var i = 0; i < p.options.length; i++)
-              Semantics(
-                button: true,
-                label: 'Picture option ${i + 1}',
-                child: InkWell(
-                  key: Key('option-$i'),
-                  onTap: () => _pick(i),
-                  borderRadius: BorderRadius.circular(14),
-                  child: Container(
-                    width: 96,
-                    height: 96,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: NovaColors.surface,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Text(
-                      p.options[i].emoji,
-                      style: const TextStyle(fontSize: 48),
-                    ),
-                  ),
-                ),
-              ),
-          ],
+        AnswerCards(
+          count: p.options.length,
+          accent: GameKind.wordQuest.accent,
+          onPick: _pick,
+          labelBuilder: (i) => 'Picture option ${i + 1}',
+          itemBuilder: (i) =>
+              Text(p.options[i].emoji, style: const TextStyle(fontSize: 44)),
         ),
       ],
     );

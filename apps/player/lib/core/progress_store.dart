@@ -25,6 +25,10 @@ class ProgressStore {
     await _prefs.setInt('preview_$game', seconds.clamp(0, 15));
   }
 
+  String? get lastPlayedGame => _prefs.getString('last_played_game');
+  Future<void> setLastPlayedGame(String game) =>
+      _prefs.setString('last_played_game', game);
+
   bool get tutorialDone => _prefs.getBool('tutorialDone') ?? false;
   Future<void> setTutorialDone() => _prefs.setBool('tutorialDone', true);
 

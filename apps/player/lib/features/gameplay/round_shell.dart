@@ -8,6 +8,7 @@ import '../../core/game_kind.dart';
 import '../catalog/game_presentation.dart';
 import '../catalog/game_settings_screen.dart';
 import 'game_header.dart';
+import 'round_journey.dart';
 import 'match_board.dart';
 import 'echo_setup_screen.dart';
 import '../../game/rules/echo_match.dart';
@@ -328,6 +329,20 @@ class _RoundShellState extends State<RoundShell> {
         difficulty: difficultyName(activeTierOverride),
         onSettings: finishing ? null : openSettings,
       ),
+      bottomNavigationBar: !sharedBoard && outcome != null
+          ? SafeArea(
+              minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: FilledButton.icon(
+                onPressed: _next,
+                style: FilledButton.styleFrom(
+                  backgroundColor: widget.kind.accent,
+                  minimumSize: const Size(0, 54),
+                ),
+                icon: const Icon(Icons.arrow_forward_rounded, size: 20),
+                label: const Text('Next round'),
+              ),
+            )
+          : null,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -374,7 +389,6 @@ class _RoundShellState extends State<RoundShell> {
       ignoring: player?.computer == true,
       child: _game(),
     );
-    if (!sharedBoard) return game;
     // Seats remain visible while tall puzzles can scroll between them.
     if (widget.kind == GameKind.pathRecall) return game;
     return LayoutBuilder(
@@ -523,28 +537,12 @@ class _RoundShellState extends State<RoundShell> {
                 ],
               ),
             ),
-            const SizedBox(height: 18),
-            FilledButton(
-              onPressed: _next,
-              style: FilledButton.styleFrom(
-                backgroundColor: widget.kind.accent,
-                minimumSize: const Size(double.infinity, 54),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('Next round'),
-                  SizedBox(width: 10),
-                  Icon(Icons.arrow_forward_rounded, size: 20),
-                ],
-              ),
+            const SizedBox(height: 14),
+            RoundJourney(
+              kind: widget.kind,
+              level: playerLevel,
+              round: roundNumber,
+              perfect: o.perfect,
             ),
           ],
         ),
