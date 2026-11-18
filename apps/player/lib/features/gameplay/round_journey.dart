@@ -48,6 +48,11 @@ String roundTip(GameKind kind, int round) {
       'Flip an unseen tile first, then use what you know.',
       'A tile you have seen twice is a free pair.',
     ],
+    GameKind.mapPuzzle => [
+      'Start with the coasts and borders: they are easy to recognise.',
+      'Use the colours: each division has its own.',
+      'Zoom in on crowded areas such as Dhaka before you drop a piece.',
+    ],
   };
   return tips[round % tips.length];
 }

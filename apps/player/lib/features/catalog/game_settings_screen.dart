@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme.dart';
 import '../../core/game_kind.dart';
+import '../../game/content/bd_map.dart';
 import '../../game/rules/path_recall.dart';
 import '../../game/rules/difficulty.dart';
 import '../../core/progress_store.dart';
@@ -145,6 +146,31 @@ class _GameSettingsScreenState extends State<GameSettingsScreen> {
                       ),
                     ),
                   ),
+                if (game == GameKind.mapPuzzle) ...[
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Easy: every region is outlined and named. Normal: '
+                      'regions are outlined, names are on the pieces. Hard: '
+                      'only the country outline, no names.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: NovaColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 12),
+                    child: Text(
+                      BdMap.attribution,
+                      key: Key('map-attribution'),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: NovaColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
                 if (game == GameKind.flipDuel) ...[
                   const SizedBox(height: 20),
                   const Text(
@@ -176,8 +202,9 @@ class _GameSettingsScreenState extends State<GameSettingsScreen> {
                     ),
                   ),
                 ],
-                // Flip Duel has no timer, turn handoff or seat setup.
-                if (game != GameKind.flipDuel) ...[
+                // Flip Duel and Map Puzzle have no timer, handoff or seats.
+                if (game != GameKind.flipDuel &&
+                    game != GameKind.mapPuzzle) ...[
                   const SizedBox(height: 12),
                   Material(
                     color: Colors.transparent,

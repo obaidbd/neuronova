@@ -63,7 +63,8 @@ Future<void> solve(WidgetTester t, GameKind kind, int turn, int level) async {
       }
       await tap(t, find.textContaining('Submit ('));
     case GameKind.flipDuel:
-      break; // has its own screen and tests
+    case GameKind.mapPuzzle:
+      break; // have their own screens and tests
     case GameKind.flipMatch:
       final w = t.widget<FlipMatchGame>(find.byType(FlipMatchGame));
       final p = FlipPuzzle.generate(tier: w.tier, seed: w.seed);
@@ -84,7 +85,9 @@ Future<void> solve(WidgetTester t, GameKind kind, int turn, int level) async {
 }
 
 void main() {
-  for (final kind in GameKind.values.where((k) => k != GameKind.flipDuel)) {
+  for (final kind in GameKind.values.where(
+    (k) => k != GameKind.flipDuel && k != GameKind.mapPuzzle,
+  )) {
     testWidgets('${kind.title}: settings opens its own match setup', (t) async {
       SharedPreferences.setMockInitialValues({});
       final store = await ProgressStore.open();

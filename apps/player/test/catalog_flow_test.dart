@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:neuronova_player/game/content/bd_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:neuronova_player/app/theme.dart';
@@ -14,6 +15,9 @@ void main() {
   ) async {
     SharedPreferences.setMockInitialValues({});
     final store = await ProgressStore.open();
+    // The map data is read from the asset bundle (real I/O): load it once up
+    // front so the Map Puzzle opens inside the fake-async test clock.
+    await t.runAsync(BdMap.load);
     t.view.physicalSize = const Size(390, 844);
     t.view.devicePixelRatio = 1;
     addTearDown(t.view.reset);
