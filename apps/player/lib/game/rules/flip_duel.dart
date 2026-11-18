@@ -3,7 +3,7 @@ import 'dart:math';
 import 'flip_match.dart';
 
 /// Pure rules for Flip Duel: a shared 6 x 6 board of 18 fruit / animal pairs,
-/// two players taking turns. No Flutter imports, so it is easy to test.
+/// two to four players taking turns. No Flutter imports, so it is easy to test.
 
 /// How the bot's memory behaves.
 enum BotLevel { easy, medium, hard }
@@ -49,7 +49,13 @@ enum FlipOutcome {
 }
 
 class DuelGame {
-  DuelGame({int? seed, Random? rng}) : cards = _deal(rng ?? Random(seed));
+  DuelGame({int players = 2, int? seed, Random? rng})
+    : players = players.clamp(2, 4),
+      scores = List.filled(players.clamp(2, 4), 0),
+      cards = _deal(rng ?? Random(seed));
+
+  /// Number of players taking turns (2 to 4).
+  final int players;
 
   static const cols = 6;
   static const pairs = 18;
@@ -61,10 +67,10 @@ class DuelGame {
   /// Tiles already matched and taken off the board.
   final Set<int> removed = {};
 
-  /// Points for player 0 and player 1.
-  final List<int> scores = [0, 0];
+  /// Points for each player.
+  final List<int> scores;
 
-  /// Whose turn it is: 0 or 1.
+  /// Whose turn it is: 0 to players - 1.
   int turn = 0;
 
   /// Tiles currently face up this turn.
@@ -91,9 +97,17 @@ class DuelGame {
   int get pairsLeft => pairs - removed.length ~/ 2;
   bool get over => removed.length == tileCount;
 
-  /// 0 or 1 for the winner, or null for a draw (only meaningful when [over]).
-  int? get winner =>
-      scores[0] == scores[1] ? null : (scores[0] > scores[1] ? 0 : 1);
+  /// Everyone with the highest score (more than one means a tie).
+  List<int> get winners {
+    final best = scores.reduce(max);
+    return [
+      for (var i = 0; i < players; i++)
+        if (scores[i] == best) i,
+    ];
+  }
+
+  /// The single winner, or null when the top score is shared (a draw).
+  int? get winner => winners.length == 1 ? winners.first : null;
 
   bool isFaceUp(int i) => i == firstTile || i == secondTile;
 
@@ -133,7 +147,7 @@ class DuelGame {
   void resolveMiss() {
     if (secondTile == null || pendingPair != null) return;
     firstTile = secondTile = null;
-    turn = 1 - turn;
+    turn = (turn + 1) % players;
   }
 }
 

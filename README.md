@@ -39,10 +39,14 @@ Open https://neuronova.muslimit.net/. The `Deploy web to neuronova.muslimit.net`
 The eighth card in the home grid. A shared 6 × 6 green board of 18 fruit / animal pairs with purple "?" tokens. Tap two tokens per turn; a match removes the pair, scores +1 and keeps the turn, a miss shows both tokens for one second and passes the turn. The game ends when every pair is gone and the higher score wins (equal scores are a draw).
 
 - **Same look and system as the other games:** the shared header (game icon, points | round | level, level bar, Settings), the same Settings screen (Difficulty Auto / Easy / Normal / Hard sets the bot), and the same points and endless level system. A finished game **against the AI** earns 0-10 points by your share of the pairs and a level-up for a win; **Auto** difficulty follows your level (low levels meet an easy bot, higher levels a perfect memory). Two-player games never change saved progress.
-- **Modes:** *vs AI* (Easy / Medium / Hard) or *2 Players* on one device, switchable on the screen. The bot only knows tiles it has actually seen flipped and forgets some of them (Easy remembers 30%, Medium 65%, Hard everything); it finishes a pair when it remembers both halves.
+- **Modes:** *vs AI* (Easy / Medium / Hard) or *friends* on one device. The number of friends (2, 3 or 4 players) is chosen in the game's Settings; the screen's mode bar switches between vs AI and friends. With three or four players the scoreboard shows one coloured card per player and a tie for first place is reported for everyone tied. The bot only knows tiles it has actually seen flipped and forgets some of them (Easy remembers 30%, Medium 65%, Hard everything); it finishes a pair when it remembers both halves.
 - **On screen:** both scores, a turn indicator, mode and difficulty selectors, sound toggle and Restart. The board is sized to fit a portrait phone without scrolling.
 - **Feel:** 3D flip animation, tap bounce, haptic ticks, a particle burst on matches, shrink-away removal, points counting up in the header. Reduced motion is respected.
 - **Sound:** flip, match, mismatch and win effects are synthesized with the Web Audio API in code (no audio files). Mobile builds and tests are silent for now.
+
+### One board look across the games
+
+The green plastic board, recessed round slots and purple-back 3D tokens of Flip Duel are shared components (`nova_board.dart`). Flip Match now uses the same tokens and board; Echo Grid, Path Recall and Focus Dash put their grids on the same green board.
 
 ## Echo Grid local matches
 

@@ -96,6 +96,46 @@ void main() {
     });
   });
 
+  group('rules for three and four players', () {
+    test('the turn rotates through every player on a miss', () {
+      for (final n in [2, 3, 4]) {
+        final g = DuelGame(players: n, seed: 4);
+        expect(g.scores.length, n);
+        final seen = <int>[];
+        for (var round = 0; round < n * 2; round++) {
+          seen.add(g.turn);
+          final a = g.available.first;
+          g.flip(a);
+          final b = g.available.firstWhere(
+            (k) => k != a && g.cards[k] != g.cards[a],
+          );
+          expect(g.flip(b), FlipOutcome.miss);
+          g.resolveMiss();
+        }
+        expect(seen, [for (var r = 0; r < n * 2; r++) r % n]);
+      }
+    });
+
+    test('ties are reported for every tied player', () {
+      final g = DuelGame(players: 4, seed: 4);
+      g.scores
+        ..[0] = 5
+        ..[1] = 5
+        ..[2] = 4
+        ..[3] = 4;
+      expect(g.winners, [0, 1]);
+      expect(g.winner, isNull);
+      g.scores[2] = 6;
+      expect(g.winners, [2]);
+      expect(g.winner, 2);
+    });
+
+    test('the player count is kept between 2 and 4', () {
+      expect(DuelGame(players: 1, seed: 1).players, 2);
+      expect(DuelGame(players: 9, seed: 1).players, 4);
+    });
+  });
+
   group('bot memory', () {
     test('Hard never forgets; Easy forgets most of what it sees', () {
       int remembered(BotLevel level) {
@@ -179,16 +219,18 @@ void main() {
     late ProgressStore store;
     Future<void> open(
       WidgetTester t, {
-      DuelMode mode = DuelMode.twoPlayers,
+      DuelMode mode = DuelMode.friends,
       Size size = const Size(390, 844),
       Sfx? sfx,
       int seed = 11,
+      int players = 2,
     }) async {
       t.view.physicalSize = size;
       t.view.devicePixelRatio = 1;
       addTearDown(t.view.reset);
       SharedPreferences.setMockInitialValues({});
       store = await ProgressStore.open();
+      await store.setDuelPlayers(players);
       await t.pumpWidget(
         MaterialApp(
           home: FlipDuelScreen(
@@ -423,6 +465,83 @@ void main() {
         {BotLevel.hard},
       );
       expect(text(t, 'duel-turn'), 'You: flip a tile'); // fresh game
+      await t.pumpWidget(const SizedBox());
+    });
+
+    for (final size in const [Size(390, 844), Size(320, 568)]) {
+      testWidgets('four players fit on ${size.width.toInt()}x'
+          '${size.height.toInt()} and take turns in order', (t) async {
+        await open(t, size: size, players: 4);
+        for (var i = 0; i < 4; i++) {
+          expect(find.byKey(Key('duel-score-$i')), findsOneWidget);
+          expect(text(t, 'duel-name-$i'), 'Player ${i + 1}');
+        }
+        expect(find.text('4 Players'), findsOneWidget);
+        final g = DuelGame(seed: 11);
+        // everybody misses once: 1 -> 2 -> 3 -> 4 -> 1
+        final firsts = [for (var k = 0; k < 4; k++) k * 2];
+        for (var turn = 0; turn < 4; turn++) {
+          expect(text(t, 'duel-turn'), 'Player ${turn + 1}: flip a tile');
+          final a = firsts[turn];
+          final b = List.generate(
+            36,
+            (k) => k,
+          ).firstWhere((k) => k != a && g.cards[k] != g.cards[a]);
+          await t.tap(find.byKey(Key('duel-token-$a')));
+          await t.pump(const Duration(milliseconds: 100));
+          await t.tap(find.byKey(Key('duel-token-$b')));
+          await t.pump(const Duration(milliseconds: 1100));
+        }
+        expect(text(t, 'duel-turn'), 'Player 1: flip a tile'); // wrapped round
+        expect(t.takeException(), isNull);
+        await t.pumpWidget(const SizedBox());
+      });
+    }
+
+    testWidgets('four players: a shared top score is a tie', (t) async {
+      await open(t, players: 4);
+      final g = DuelGame(seed: 11);
+      // Players 1 and 2 each take one pair, then everyone misses until the
+      // turn comes round; finish with player 3 and 4 not scoring.
+      Future<void> pair(int i) async {
+        await t.tap(find.byKey(Key('duel-token-$i')));
+        await t.pump(const Duration(milliseconds: 50));
+        await t.tap(find.byKey(Key('duel-token-${partner(g, i)}')));
+        await t.pump(const Duration(milliseconds: 800));
+      }
+
+      await pair(0); // player 1 scores and keeps the turn
+      final left = [
+        for (var i = 0; i < 36; i++)
+          if (i != 0 && i != partner(g, 0)) i,
+      ];
+      final a = left.first;
+      final b = left.firstWhere((k) => g.cards[k] != g.cards[a]);
+      await t.tap(find.byKey(Key('duel-token-$a')));
+      await t.pump(const Duration(milliseconds: 50));
+      await t.tap(find.byKey(Key('duel-token-$b')));
+      await t.pump(const Duration(milliseconds: 1100)); // miss -> player 2
+      expect(text(t, 'duel-turn'), 'Player 2: flip a tile');
+      expect(text(t, 'duel-score-0'), '1');
+      await t.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('the number of friends is chosen in Settings', (t) async {
+      await open(t);
+      expect(find.text('2 Players'), findsOneWidget);
+      await t.tap(find.byKey(const Key('game-settings')));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('duel-players')), findsOneWidget);
+      await t.tap(find.text('4 players'));
+      await t.pump();
+      final save = find.byKey(const Key('save-game-settings'));
+      await t.ensureVisible(save);
+      await t.tap(save);
+      await t.pumpAndSettle();
+      expect(store.duelPlayers, 4);
+      expect(find.text('4 Players'), findsOneWidget);
+      expect(find.byKey(const Key('duel-score-3')), findsOneWidget);
+      expect(text(t, 'duel-turn'), 'Player 1: flip a tile'); // fresh game
       await t.pumpWidget(const SizedBox());
     });
   });

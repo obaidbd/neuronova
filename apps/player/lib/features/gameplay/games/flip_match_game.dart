@@ -6,6 +6,7 @@ import '../../../app/theme.dart';
 import '../../../core/game_kind.dart';
 import '../../../game/rules/flip_match.dart';
 import '../../catalog/game_presentation.dart';
+import '../nova_board.dart';
 import '../round_shell.dart';
 
 /// Flip two cards at a time and match every fruit / animal pair.
@@ -108,74 +109,38 @@ class _S extends State<FlipMatchGame> {
         const SizedBox(height: 16),
         LayoutBuilder(
           builder: (context, constraints) {
-            const gap = 10.0;
-            final size = ((constraints.maxWidth - gap * (p.cols - 1)) / p.cols)
-                .clamp(48.0, 96.0);
-            return Wrap(
-              spacing: gap,
-              runSpacing: gap,
-              alignment: WrapAlignment.center,
-              children: [
-                for (var i = 0; i < p.cards.length; i++) _card(i, size, accent),
-              ],
+            const gap = 8.0, pad = 10.0;
+            final size =
+                ((constraints.maxWidth - pad * 2 - gap * (p.cols - 1)) / p.cols)
+                    .clamp(44.0, 92.0);
+            // The same green board and round 3D tokens as Flip Duel.
+            return NovaBoardFrame(
+              padding: const EdgeInsets.all(pad),
+              child: Wrap(
+                spacing: gap,
+                runSpacing: gap,
+                alignment: WrapAlignment.center,
+                children: [
+                  for (var i = 0; i < p.cards.length; i++)
+                    NovaSlot(
+                      size: size,
+                      child: NovaToken(
+                        key: Key('card-$i'),
+                        faceUp: _faceUp(i),
+                        removed: false,
+                        matched: matched[i],
+                        symbol: flipSymbols[p.cards[i]],
+                        size: size,
+                        label: 'Card ${i + 1}',
+                        onTap: () => _flip(i),
+                      ),
+                    ),
+                ],
+              ),
             );
           },
         ),
       ],
-    );
-  }
-
-  Widget _card(int i, double size, Color accent) {
-    final up = _faceUp(i);
-    final symbol = flipSymbols[p.cards[i]];
-    final isMatched = matched[i];
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Semantics(
-        button: true,
-        label: up
-            ? 'Card ${i + 1}: ${symbol.name}${isMatched ? ', matched' : ''}'
-            : 'Card ${i + 1}, face down',
-        excludeSemantics: true,
-        onTap: () => _flip(i),
-        child: Material(
-          color: Colors.transparent,
-          child: AnimatedContainer(
-            duration: MediaQuery.disableAnimationsOf(context)
-                ? Duration.zero
-                : const Duration(milliseconds: 180),
-            decoration: BoxDecoration(
-              color: up
-                  ? (isMatched
-                        ? accent.withValues(alpha: .16)
-                        : NovaColors.surface)
-                  : accent.withValues(alpha: .10),
-              borderRadius: BorderRadius.circular(size / 2),
-              border: Border.all(
-                color: isMatched
-                    ? accent
-                    : accent.withValues(alpha: up ? .7 : .28),
-                width: isMatched || up ? 2 : 1,
-              ),
-            ),
-            child: InkWell(
-              key: Key('card-$i'),
-              customBorder: const CircleBorder(),
-              onTap: () => _flip(i),
-              child: Center(
-                child: up
-                    ? Text(symbol.emoji, style: TextStyle(fontSize: size * .5))
-                    : Icon(
-                        Icons.help_outline_rounded,
-                        size: size * .4,
-                        color: accent.withValues(alpha: .55),
-                      ),
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
