@@ -3,21 +3,28 @@ import 'dart:ui';
 
 import '../content/bd_map.dart';
 
-/// How much help the player gets. The board itself is always one blank
-/// outline of the area (no inner lines, no names), like the physical puzzle;
-/// the help level changes the pieces and how forgiving a drop is.
+/// How much help the player gets. The board never shows names on empty
+/// places; the help level changes whether each place is faintly tinted and
+/// outlined, plus the names on the pieces and how forgiving a drop is.
 enum MapHelp {
-  /// Names on the pieces, generous drops, a wrong drop says which region it was.
+  /// Faint tint and thin outline on every place, names on the pieces,
+  /// generous drops, and a wrong drop says which region it was.
   easy,
 
-  /// Names on the pieces, moderate drops.
+  /// Faint tint and thin outline on every place, names on the pieces,
+  /// moderate drops.
   normal,
 
-  /// No names anywhere until a piece is placed; precise drops.
+  /// One blank outline of the whole area, no names anywhere until a piece is
+  /// placed, precise drops.
   hard,
 }
 
 extension MapHelpInfo on MapHelp {
+  /// Each empty place is faintly tinted and outlined (otherwise the board is
+  /// one blank outline).
+  bool get showSlots => this != MapHelp.hard;
+
   bool get namesOnPieces => this != MapHelp.hard;
 
   /// A wrong drop tells the player which region they landed in.

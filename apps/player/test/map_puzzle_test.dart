@@ -213,6 +213,9 @@ void main() {
       expect(mapHelpForTier(1), MapHelp.easy);
       expect(mapHelpForTier(5), MapHelp.normal);
       expect(mapHelpForTier(9), MapHelp.hard);
+      expect(MapHelp.easy.showSlots, isTrue);
+      expect(MapHelp.normal.showSlots, isTrue);
+      expect(MapHelp.hard.showSlots, isFalse);
       expect(MapHelp.easy.tellsWrongRegion, isTrue);
       expect(MapHelp.normal.tellsWrongRegion, isFalse);
       expect(MapHelp.normal.namesOnPieces, isTrue);
@@ -230,11 +233,15 @@ void main() {
       MapSelection selection = MapSelection.country,
       Size size = const Size(390, 844),
       Map<String, Object> prefs = const {},
+      bool around = true,
     }) async {
       t.view.physicalSize = size;
       t.view.devicePixelRatio = 1;
       addTearDown(t.view.reset);
-      SharedPreferences.setMockInitialValues(prefs);
+      SharedPreferences.setMockInitialValues({
+        'map_pieces_around': around,
+        ...prefs,
+      });
       store = await ProgressStore.open();
       await t.pumpWidget(
         MaterialApp(
@@ -264,7 +271,7 @@ void main() {
         MapPuzzle(map: map, selection: s, help: help, seed: 3);
 
     testWidgets('shows the header, tray, board and progress', (t) async {
-      await open(t);
+      await open(t, around: false);
       expect(find.byKey(const Key('game-score-bar')), findsOneWidget);
       expect(find.byKey(const Key('game-settings')), findsOneWidget);
       expect(text(t, 'map-title'), 'Bangladesh · Divisions');
@@ -443,7 +450,8 @@ void main() {
       await t.tap(find.text('Hard').last);
       await t.pumpAndSettle();
       final save = find.byKey(const Key('save-game-settings'));
-      await t.ensureVisible(save);
+      await t.drag(find.byType(ListView), const Offset(0, -400));
+      await t.pumpAndSettle();
       await t.tap(save);
       await t.pumpAndSettle();
       expect(find.byKey(const Key('map-title')), findsOneWidget);
@@ -470,5 +478,137 @@ void main() {
         expect(t.takeException(), isNull);
       });
     }
+
+    for (final size in const [Size(390, 844), Size(360, 640), Size(320, 568)]) {
+      testWidgets('pieces around the map on ${size.width.toInt()}x'
+          '${size.height.toInt()}: all four sides, no scrolling, no overlap', (
+        t,
+      ) async {
+        await open(
+          t,
+          size: size,
+          selection: const MapSelection(level: MapLevel.district),
+        );
+        expect(find.byKey(const Key('map-around')), findsOneWidget);
+        expect(find.byKey(const Key('map-tray')), findsNothing);
+        expect(find.byType(ListView), findsNothing); // nothing scrolls
+        final pz = shadow(const MapSelection(level: MapLevel.district));
+        final mapRect = t.getRect(find.byKey(const Key('map-board')));
+        final cards = <Rect>[];
+        for (final id in pz.order) {
+          final f = find.byKey(Key('piece-$id'));
+          if (f.evaluate().isEmpty) continue;
+          final r = t.getRect(f);
+          cards.add(r);
+          expect(r.left, greaterThanOrEqualTo(0));
+          expect(r.right, lessThanOrEqualTo(size.width + .5));
+          expect(r.bottom, lessThanOrEqualTo(size.height));
+          expect(r.overlaps(mapRect), isFalse, reason: 'card over the map');
+        }
+        // enough cards to matter, and on every side of the map
+        expect(cards.length, greaterThanOrEqualTo(10));
+        expect(
+          cards.any((r) => r.bottom <= mapRect.top + 1),
+          isTrue,
+          reason: 'above',
+        );
+        expect(
+          cards.any((r) => r.top >= mapRect.bottom - 1),
+          isTrue,
+          reason: 'below',
+        );
+        expect(
+          cards.any((r) => r.right <= mapRect.left + 1),
+          isTrue,
+          reason: 'left',
+        );
+        expect(
+          cards.any((r) => r.left >= mapRect.right - 1),
+          isTrue,
+          reason: 'right',
+        );
+        // the cards do not overlap each other
+        for (var i = 0; i < cards.length; i++) {
+          for (var j = i + 1; j < cards.length; j++) {
+            expect(
+              cards[i].deflate(1).overlaps(cards[j].deflate(1)),
+              isFalse,
+              reason: 'cards $i and $j overlap',
+            );
+          }
+        }
+        expect(t.takeException(), isNull);
+      });
+    }
+
+    testWidgets('around the map: drag a card from the side onto the map', (
+      t,
+    ) async {
+      await open(t);
+      final pz = shadow(MapSelection.country);
+      // every one of the 8 pieces is on screen around the map
+      for (final id in pz.order) {
+        expect(find.byKey(Key('piece-$id')), findsOneWidget);
+      }
+      final id = pz.order.last;
+      final g = await t.startGesture(t.getCenter(find.byKey(Key('piece-$id'))));
+      await g.moveBy(const Offset(12, 12));
+      await t.pump();
+      await g.moveTo(spot(t, pz, pz.unit(id)));
+      await t.pump();
+      await g.up();
+      await t.pump();
+      expect(text(t, 'map-progress'), '1 / 8 placed');
+      expect(find.byKey(Key('piece-$id')), findsNothing);
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('around the map: placed pieces free their cards for the next '
+        'ones', (t) async {
+      await open(t, selection: const MapSelection(level: MapLevel.upazila));
+      final pz = shadow(const MapSelection(level: MapLevel.upazila));
+      final shown = [
+        for (final id in pz.order)
+          if (find.byKey(Key('piece-$id')).evaluate().isNotEmpty) id,
+      ];
+      expect(shown.length, lessThan(pz.total)); // 500+ pieces: only some show
+      expect(shown, pz.order.take(shown.length)); // the next ones, in order
+      final first = pz.order.first;
+      await t.tapAt(spot(t, pz, pz.unit(first)));
+      await t.pump();
+      expect(find.byKey(Key('piece-$first')), findsNothing);
+      final next = pz.order[shown.length]; // a new piece joined the ring
+      expect(find.byKey(Key('piece-$next')), findsOneWidget);
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('the layout is chosen in Settings and remembered', (t) async {
+      await open(t);
+      expect(find.byKey(const Key('map-around')), findsOneWidget);
+      await t.tap(find.byKey(const Key('game-settings')));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('map-layout')), findsOneWidget);
+      await t.tap(find.text('Scrolling tray'));
+      await t.pump();
+      await t.drag(find.byType(ListView), const Offset(0, -400));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('save-game-settings')));
+      await t.pumpAndSettle();
+      expect(store.mapPiecesAround, isFalse);
+      expect(find.byKey(const Key('map-tray')), findsOneWidget);
+      expect(find.byKey(const Key('map-around')), findsNothing);
+      // and back again
+      await t.tap(find.byKey(const Key('game-settings')));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Around the map'));
+      await t.pump();
+      await t.drag(find.byType(ListView), const Offset(0, -400));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('save-game-settings')));
+      await t.pumpAndSettle();
+      expect(store.mapPiecesAround, isTrue);
+      expect(find.byKey(const Key('map-around')), findsOneWidget);
+      await t.pumpWidget(const SizedBox());
+    });
   });
 }

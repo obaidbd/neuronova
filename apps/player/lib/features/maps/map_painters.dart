@@ -84,29 +84,47 @@ class MapBoardPainter extends CustomPainter {
     final zoom = controller.value.getMaxScaleOnAxis();
     // Big regions first so a small one inside a big one stays visible.
     final units = [...puzzle.pieces]..sort((a, b) => b.area.compareTo(a.area));
-    // The blank board: one empty outline of the whole area. Every slot's edge
-    // is drawn first, then every slot's face on top, so the edges between
-    // neighbouring slots disappear and only the outer outline remains.
+    // Empty places. Every slot's edge is drawn first, then every slot's face
+    // on top, so the edge between two neighbours disappears under the faces
+    // and only the area's outer outline remains. Unless the help level is
+    // Hard, each face carries a faint tint of its division and a hairline
+    // border (drawn last, over all faces) so the extent of every place is
+    // visible without any names.
     final edge = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.2 / zoom
       ..strokeJoin = StrokeJoin.round
       ..color = const Color(0xFF8FA9BC);
-    final face = Paint()..color = const Color(0xFFF7FAFC);
+    final blank = const Color(0xFFF7FAFC);
     final seam = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = .8 / zoom
-      ..color = const Color(0xFFF7FAFC);
+      ..color = blank;
     final empty = [
       for (final u in units)
-        if (!puzzle.placed.contains(u.id)) paths[u.id]!,
+        if (!puzzle.placed.contains(u.id)) u,
     ];
-    for (final path in empty) {
-      canvas.drawPath(path, edge);
+    for (final u in empty) {
+      canvas.drawPath(paths[u.id]!, edge);
     }
-    for (final path in empty) {
+    final face = Paint();
+    for (final u in empty) {
+      final path = paths[u.id]!;
+      face.color = puzzle.help.showSlots
+          ? Color.lerp(Colors.white, colorOf(map, u), .42)!
+          : blank;
       canvas.drawPath(path, face);
-      canvas.drawPath(path, seam);
+      if (!puzzle.help.showSlots) canvas.drawPath(path, seam);
+    }
+    if (puzzle.help.showSlots) {
+      final border = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = .55 / zoom
+        ..strokeJoin = StrokeJoin.round
+        ..color = const Color(0xFF8FA9BC).withValues(alpha: .7);
+      for (final u in empty) {
+        canvas.drawPath(paths[u.id]!, border);
+      }
     }
     // Placed pieces sit in their slots with a thin white edge.
     final line = Paint()
