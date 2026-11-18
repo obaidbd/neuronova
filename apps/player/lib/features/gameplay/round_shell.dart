@@ -23,7 +23,9 @@ import '../../core/progress_store.dart';
 import '../../game/rules/adaptive.dart';
 import '../../game/rules/scoring.dart';
 import '../../game/rules/difficulty.dart';
+import 'games/flip_match_game.dart';
 import 'games/focus_dash_game.dart';
+import '../../game/rules/flip_match.dart';
 import 'games/number_forge_game.dart';
 import 'games/path_recall_game.dart';
 import 'games/pattern_portal_game.dart';
@@ -135,6 +137,10 @@ class _RoundShellState extends State<RoundShell> {
       case GameKind.pathRecall:
         final p = PathPuzzle.generate(tier: tier, seed: seed);
         final result = p.evaluate(succeeds ? p.expected.sublist(1) : <int>[]);
+        return RoundOutcome(accuracy: result.accuracy, perfect: result.perfect);
+      case GameKind.flipMatch:
+        final p = FlipPuzzle.generate(tier: tier, seed: seed);
+        final result = p.evaluate(mistakes: succeeds ? p.pairs ~/ 4 : p.pairs);
         return RoundOutcome(accuracy: result.accuracy, perfect: result.perfect);
       case GameKind.echoGrid:
         throw StateError('Echo Grid has its own screen');
@@ -337,6 +343,13 @@ class _RoundShellState extends State<RoundShell> {
             clock.reset();
             clock.start();
           },
+          key: key,
+          tier: tier,
+          seed: seed,
+          onFinished: _finish,
+        );
+      case GameKind.flipMatch:
+        return FlipMatchGame(
           key: key,
           tier: tier,
           seed: seed,

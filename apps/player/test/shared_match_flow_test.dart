@@ -11,7 +11,9 @@ import 'package:neuronova_player/features/gameplay/match_board.dart';
 import 'package:neuronova_player/features/gameplay/games/pattern_portal_game.dart';
 import 'package:neuronova_player/features/gameplay/games/number_forge_game.dart';
 import 'package:neuronova_player/features/gameplay/games/word_quest_game.dart';
+import 'package:neuronova_player/features/gameplay/games/flip_match_game.dart';
 import 'package:neuronova_player/features/gameplay/games/focus_dash_game.dart';
+import 'package:neuronova_player/game/rules/flip_match.dart';
 import 'package:neuronova_player/features/gameplay/games/path_recall_game.dart';
 import 'package:neuronova_player/game/rules/echo_match.dart';
 import 'package:neuronova_player/game/rules/echo_grid.dart';
@@ -60,6 +62,14 @@ Future<void> solve(WidgetTester t, GameKind kind, int turn, int level) async {
         await tap(t, find.byKey(Key('item-$item')));
       }
       await tap(t, find.textContaining('Submit ('));
+    case GameKind.flipMatch:
+      final w = t.widget<FlipMatchGame>(find.byType(FlipMatchGame));
+      final p = FlipPuzzle.generate(tier: w.tier, seed: w.seed);
+      for (var i = 0; i < p.cards.length; i++) {
+        if (p.partnerOf(i) < i) continue; // tap each pair once
+        await tap(t, find.byKey(Key('card-$i')));
+        await tap(t, find.byKey(Key('card-${p.partnerOf(i)}')));
+      }
     case GameKind.pathRecall:
       final w = t.widget<PathRecallGame>(find.byType(PathRecallGame));
       final p = PathPuzzle.generate(tier: w.tier, seed: w.seed);

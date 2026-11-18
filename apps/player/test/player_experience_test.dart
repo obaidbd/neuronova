@@ -10,13 +10,14 @@ import 'package:neuronova_player/features/gameplay/round_journey.dart';
 
 void main() {
   test(
-    'daily suggestion rotates through six games without changing within a day',
+    'daily suggestion rotates through every game without changing within a day',
     () {
+      final n = GameKind.values.length;
       final days = List.generate(
-        6,
+        n,
         (i) => dailyGame(DateTime(2026, 11, 16 + i)),
       );
-      expect(days.toSet().length, 6);
+      expect(days.toSet().length, n);
       expect(
         dailyGame(DateTime(2026, 11, 16, 1)),
         dailyGame(DateTime(2026, 11, 16, 23)),

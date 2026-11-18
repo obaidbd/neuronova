@@ -38,6 +38,11 @@ String roundTip(GameKind kind, int round) {
       'Break the route into short sections.',
       'Check the direction: some routes run backwards.',
     ],
+    GameKind.flipMatch => [
+      'Flip near each other first, then you can remember neighbours.',
+      'Say each picture to yourself as you flip it.',
+      'Remember the corners and edges first.',
+    ],
   };
   return tips[round % tips.length];
 }

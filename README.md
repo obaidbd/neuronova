@@ -2,7 +2,7 @@
 
 *Play. Think. Discover.* — a family-friendly puzzle adventure (spec: "Production-Ready Game Design & Development Master Specification v2.0").
 
-## Status: Phase 1 + 2 + 3 (all six core minigames)
+## Status: Phase 1 + 2 + 3 (six core minigames, plus Flip Match)
 
 `apps/player` (Flutter) now has all six minigames, each with a pure-Dart rules module, seeded deterministic generation and tests:
 
@@ -14,6 +14,7 @@
 | Number Forge | numbers | exactly one option makes the equation true (deterministic evaluation) |
 | Word Quest | vocabulary (EN/বাংলা/العربية) | one correct picture; starter vocab marked `draft` |
 | Path Recall | spatial memory | self-avoiding route, legal-move checks, optional reverse mode |
+| Flip Match | pair memory | seeded deal where every fruit / animal appears exactly twice; 3-12 pairs by tier; success at 70% of attempts right |
 
 Also: design system, guest-first flow, tutorial, per-skill adaptive tiers, scoring (timed/untimed), idempotent local point commits, untimed accessible mode.
 

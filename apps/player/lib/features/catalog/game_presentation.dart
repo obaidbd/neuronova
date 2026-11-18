@@ -10,6 +10,7 @@ extension GamePresentation on GameKind {
     GameKind.numberForge => const Color(0xFFF2CE7B),
     GameKind.wordQuest => const Color(0xFF8DC8FF),
     GameKind.pathRecall => const Color(0xFFEDA4D4),
+    GameKind.flipMatch => const Color(0xFF9BE37A),
   };
   String get category => switch (this) {
     GameKind.echoGrid => 'MEMORY',
@@ -18,6 +19,7 @@ extension GamePresentation on GameKind {
     GameKind.numberForge => 'NUMBERS',
     GameKind.wordQuest => 'WORDS',
     GameKind.pathRecall => 'SPATIAL',
+    GameKind.flipMatch => 'PAIRS',
   };
   String get description => switch (this) {
     GameKind.echoGrid => 'A little glow. A sharper memory. Remember the tiles and bring the pattern back to life.',
@@ -26,6 +28,7 @@ extension GamePresentation on GameKind {
     GameKind.numberForge => 'Turn quick thinking into number magic. Find the missing answer and make every equation click.',
     GameKind.wordQuest => 'Connect words with pictures and discover familiar things in English, বাংলা and العربية.',
     GameKind.pathRecall => 'Follow a trail with your eyes, then retrace it from memory. Every step is a new challenge.',
+    GameKind.flipMatch => 'Flip the cards, remember where each fruit and animal hides, and match every pair.',
   };
   List<String> get instructions => switch (this) {
     GameKind.echoGrid => [
@@ -57,6 +60,11 @@ extension GamePresentation on GameKind {
       'Memorise the numbered route while it is visible.',
       'Start at S and tap neighbouring tiles to retrace it.',
       'Follow the direction shown; some levels ask you to walk backwards.',
+    ],
+    GameKind.flipMatch => [
+      'Tap a card to flip it, then tap a second card.',
+      'Matching pictures stay open; different ones flip back, so remember where they are.',
+      'Find every pair. Fewer missed tries means a higher score.',
     ],
   };
 }
