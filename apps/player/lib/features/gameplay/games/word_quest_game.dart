@@ -26,10 +26,12 @@ class _S extends State<WordQuestGame> {
     seed: widget.seed,
   );
   bool done = false;
+  int? picked;
 
   void _pick(int i) {
     if (done) return;
     done = true;
+    setState(() => picked = i);
     final ok = p.isCorrect(i);
     widget.onFinished(
       RoundOutcome(
@@ -81,6 +83,8 @@ class _S extends State<WordQuestGame> {
           count: p.options.length,
           accent: GameKind.wordQuest.accent,
           onPick: _pick,
+          pickedIndex: picked,
+          correctIndex: p.options.indexWhere((it) => it.id == p.item.id),
           labelBuilder: (i) => 'Picture option ${i + 1}',
           itemBuilder: (i) =>
               Text(p.options[i].emoji, style: const TextStyle(fontSize: 44)),

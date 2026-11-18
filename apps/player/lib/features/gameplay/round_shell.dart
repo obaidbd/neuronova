@@ -10,6 +10,7 @@ import '../catalog/game_presentation.dart';
 import '../catalog/game_settings_screen.dart';
 import 'game_header.dart';
 import 'round_feedback.dart';
+import 'round_journey.dart';
 import 'match_board.dart';
 import 'echo_setup_screen.dart';
 import '../../game/rules/echo_match.dart';
@@ -67,6 +68,7 @@ class _RoundShellState extends State<RoundShell> {
   late Stopwatch clock;
   RoundOutcome? outcome;
   int score = 0;
+  int streak = 0;
   late int playerLevel;
   int roundNumber = 1;
   int? activeTierOverride;
@@ -210,6 +212,7 @@ class _RoundShellState extends State<RoundShell> {
       finishing = false;
       outcome = o;
       score = s;
+      if (!sharedBoard) streak = o.perfect ? streak + 1 : 0;
       playerLevel = sharedBoard
           ? player!.level
           : widget.store.levelFor(widget.kind.skillKey);
@@ -357,6 +360,8 @@ class _RoundShellState extends State<RoundShell> {
         level: playerLevel,
         difficulty: difficultyName(activeTierOverride),
         animate: !sharedBoard,
+        gain: !sharedBoard && outcome != null ? score : null,
+        gainKey: roundId,
         onSettings: finishing ? null : openSettings,
       ),
       bottomNavigationBar:
@@ -415,7 +420,10 @@ class _RoundShellState extends State<RoundShell> {
                   kind: widget.kind,
                   perfect: o.perfect,
                   score: score,
-                  message: o.message,
+                  message: o.perfect || o.message.isNotEmpty
+                      ? o.message
+                      : roundTip(widget.kind, roundNumber),
+                  streak: streak,
                   checkpointLevel: o.perfect && level % 5 == 0 ? level : null,
                   onTap: _next,
                 ),

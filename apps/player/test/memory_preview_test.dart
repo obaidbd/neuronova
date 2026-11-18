@@ -95,7 +95,9 @@ void main() {
       }
       expect(store.roundsFor('spatial_memory'), 0);
       await t.tap(submit);
-      await t.pumpAndSettle();
+      // Solo rounds advance by themselves after ~1 s, so check right away.
+      await t.pump(const Duration(milliseconds: 100));
+      await t.pump(const Duration(milliseconds: 100));
       expect(store.roundsFor('spatial_memory'), 1);
       expect(store.pointsFor('spatial_memory'), 10);
       expect(store.pointsFor('visual_memory'), 0);

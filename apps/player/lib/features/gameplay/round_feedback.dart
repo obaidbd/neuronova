@@ -15,6 +15,7 @@ class RoundFeedback extends StatelessWidget {
     required this.score,
     this.message = '',
     this.checkpointLevel,
+    this.streak = 0,
     this.onTap,
   });
   final GameKind kind;
@@ -25,6 +26,9 @@ class RoundFeedback extends StatelessWidget {
   /// Set when this round reached a five-level checkpoint.
   final int? checkpointLevel;
   final VoidCallback? onTap;
+
+  /// Correct answers in a row (shown from two). A miss only resets it.
+  final int streak;
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +52,7 @@ class RoundFeedback extends StatelessWidget {
     final spoken = [
       label,
       if (score > 0) '$score points',
+      if (perfect && streak >= 2) '$streak in a row',
       if (message.isNotEmpty) message,
     ].join('. ');
 
@@ -97,6 +102,23 @@ class RoundFeedback extends StatelessWidget {
                             color: color,
                           ),
                         ),
+                        if (perfect && streak >= 2) ...[
+                          const SizedBox(width: 9),
+                          const Icon(
+                            Icons.local_fire_department_rounded,
+                            size: 16,
+                            color: NovaColors.gold,
+                          ),
+                          Text(
+                            '$streak',
+                            key: const Key('streak-count'),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: NovaColors.gold,
+                            ),
+                          ),
+                        ],
                         if (score > 0) ...[
                           const SizedBox(width: 9),
                           Text(

@@ -19,6 +19,8 @@ class GameHeader extends StatelessWidget implements PreferredSizeWidget {
     this.title,
     this.showSettings = true,
     this.animate = false,
+    this.gain,
+    this.gainKey,
   });
   final GameKind kind;
   final int points, round, level;
@@ -31,6 +33,11 @@ class GameHeader extends StatelessWidget implements PreferredSizeWidget {
   /// Count points up and slide the level bar instead of jumping. Used for solo
   /// play; shared-device matches switch between players, so they stay static.
   final bool animate;
+
+  /// Points just earned; floats up beside the total once. [gainKey] must
+  /// differ for every round so the pop plays again.
+  final int? gain;
+  final Object? gainKey;
 
   @override
   Size get preferredSize => const Size.fromHeight(57);
@@ -78,15 +85,29 @@ class GameHeader extends StatelessWidget implements PreferredSizeWidget {
                       child: Semantics(
                         label: '$points points',
                         excludeSemantics: true,
-                        child: _CountUp(
-                          animate: animate,
-                          value: points,
-                          textKey: const Key('game-total-score'),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: NovaColors.gold,
-                          ),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            _CountUp(
+                              animate: animate,
+                              value: points,
+                              textKey: const Key('game-total-score'),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: NovaColors.gold,
+                              ),
+                            ),
+                            if (animate && gain != null && gain! > 0)
+                              Positioned(
+                                top: -2,
+                                right: -2,
+                                child: _GainPop(
+                                  key: ValueKey(gainKey),
+                                  gain: gain!,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ),
@@ -107,13 +128,17 @@ class GameHeader extends StatelessWidget implements PreferredSizeWidget {
                     separator(),
                     Tooltip(
                       message: 'Level $level · $difficulty',
-                      child: Text(
-                        'Lv$level',
-                        key: const Key('tier-label'),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: kind.accent,
+                      child: _Pulse(
+                        value: level,
+                        enabled: animate,
+                        child: Text(
+                          'Lv$level',
+                          key: const Key('tier-label'),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: kind.accent,
+                          ),
                         ),
                       ),
                     ),
@@ -190,5 +215,92 @@ class _CountUp extends StatelessWidget {
     curve: Curves.easeOutCubic,
     builder: (context, v, _) =>
         Text('${v.round()}', key: textKey, style: style),
+  );
+}
+
+/// "+N" that rises and fades once beside the points total.
+class _GainPop extends StatelessWidget {
+  const _GainPop({super.key, required this.gain});
+  final int gain;
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.disableAnimationsOf(context)) return const SizedBox();
+    return IgnorePointer(
+      child: ExcludeSemantics(
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 900),
+          builder: (context, t, child) => Opacity(
+            opacity: (1 - t).clamp(0.0, 1.0),
+            child: Transform.translate(
+              offset: Offset(0, -18 * t),
+              child: child,
+            ),
+          ),
+          child: Text(
+            '+$gain',
+            key: const Key('header-gain'),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: NovaColors.gold,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Briefly scales [child] up whenever [value] changes (not on first build).
+class _Pulse extends StatefulWidget {
+  const _Pulse({
+    required this.value,
+    required this.enabled,
+    required this.child,
+  });
+  final int value;
+  final bool enabled;
+  final Widget child;
+
+  @override
+  State<_Pulse> createState() => _PulseState();
+}
+
+class _PulseState extends State<_Pulse> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 420),
+  );
+
+  @override
+  void didUpdateWidget(_Pulse old) {
+    super.didUpdateWidget(old);
+    if (widget.enabled &&
+        widget.value != old.value &&
+        !MediaQuery.disableAnimationsOf(context)) {
+      _c.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _c,
+    builder: (context, child) => Transform.scale(
+      scale:
+          1 +
+          .45 *
+              Curves.easeOutBack.transform(1 - _c.value) *
+              (_c.isAnimating ? 1 : 0),
+      child: child,
+    ),
+    child: widget.child,
   );
 }
