@@ -2,13 +2,14 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../app/theme.dart';
 import '../../core/game_kind.dart';
 import '../catalog/game_presentation.dart';
 import '../catalog/game_settings_screen.dart';
 import 'game_header.dart';
-import 'round_journey.dart';
+import 'round_feedback.dart';
 import 'match_board.dart';
 import 'echo_setup_screen.dart';
 import '../../game/rules/echo_match.dart';
@@ -75,10 +76,12 @@ class _RoundShellState extends State<RoundShell> {
   EchoPlayer? player;
   Timer? computerTimer;
   Timer? handoffTimer;
+  Timer? soloTimer;
   bool get sharedBoard => (widget.match?.players.length ?? 1) > 1;
 
   @override
   void dispose() {
+    soloTimer?.cancel();
     handoffTimer?.cancel();
     computerTimer?.cancel();
     super.dispose();
@@ -148,6 +151,7 @@ class _RoundShellState extends State<RoundShell> {
   }
 
   void _next() {
+    soloTimer?.cancel();
     handoffTimer?.cancel();
     computerTimer?.cancel();
     if (sharedBoard && widget.match!.finished) {
@@ -210,7 +214,31 @@ class _RoundShellState extends State<RoundShell> {
           ? player!.level
           : widget.store.levelFor(widget.kind.skillKey);
     });
-    _scheduleHandoff();
+    if (sharedBoard) {
+      _scheduleHandoff();
+    } else {
+      o.perfect
+          ? HapticFeedback.lightImpact()
+          : HapticFeedback.selectionClick();
+      _scheduleSoloAdvance();
+    }
+  }
+
+  /// Solo rounds flow straight into the next one; the header already shows the
+  /// new points and level. Relaxed (untimed) mode waits for a tap instead.
+  void _scheduleSoloAdvance() {
+    soloTimer?.cancel();
+    final o = outcome;
+    if (sharedBoard ||
+        o == null ||
+        settingsOpen ||
+        widget.store.untimedFor(widget.kind.skillKey)) {
+      return;
+    }
+    final ms = o.perfect ? 1000 : (o.message.isNotEmpty ? 2200 : 1500);
+    soloTimer = Timer(Duration(milliseconds: ms), () {
+      if (mounted && !settingsOpen && outcome != null) _next();
+    });
   }
 
   void _scheduleHandoff() {
@@ -229,6 +257,7 @@ class _RoundShellState extends State<RoundShell> {
 
   Future<void> openSettings() async {
     if (finishing) return;
+    soloTimer?.cancel();
     handoffTimer?.cancel();
     clock.stop();
     computerTimer?.cancel();
@@ -255,7 +284,7 @@ class _RoundShellState extends State<RoundShell> {
       );
       return;
     }
-    if (outcome == null) {
+    if (outcome == null || !sharedBoard) {
       _next();
     } else {
       setState(() => settingsOpen = false);
@@ -327,9 +356,13 @@ class _RoundShellState extends State<RoundShell> {
         roundLimit: sharedBoard ? widget.match!.roundLimit : null,
         level: playerLevel,
         difficulty: difficultyName(activeTierOverride),
+        animate: !sharedBoard,
         onSettings: finishing ? null : openSettings,
       ),
-      bottomNavigationBar: !sharedBoard && outcome != null
+      bottomNavigationBar:
+          !sharedBoard &&
+              outcome != null &&
+              widget.store.untimedFor(widget.kind.skillKey)
           ? SafeArea(
               minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
               child: FilledButton.icon(
@@ -358,11 +391,37 @@ class _RoundShellState extends State<RoundShell> {
                       status: outcome == null ? null : 'Turn complete',
                       child: _turnContent(),
                     )
-                  : _turnContent(),
+                  : _soloContent(),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  /// Solo layout: a fixed slot for the answer feedback above the puzzle, so
+  /// the puzzle never jumps when the feedback appears.
+  Widget _soloContent() {
+    final o = outcome;
+    final level = playerLevel;
+    return Column(
+      children: [
+        SizedBox(
+          height: 56,
+          child: o == null || settingsOpen
+              ? null
+              : RoundFeedback(
+                  key: ValueKey(roundId),
+                  kind: widget.kind,
+                  perfect: o.perfect,
+                  score: score,
+                  message: o.message,
+                  checkpointLevel: o.perfect && level % 5 == 0 ? level : null,
+                  onTap: _next,
+                ),
+        ),
+        Expanded(child: _turnContent()),
+      ],
     );
   }
 
@@ -384,9 +443,9 @@ class _RoundShellState extends State<RoundShell> {
         ],
       );
     }
-    if (outcome != null) return _result();
+    if (outcome != null && sharedBoard) return _result();
     final game = IgnorePointer(
-      ignoring: player?.computer == true,
+      ignoring: player?.computer == true || outcome != null,
       child: _game(),
     );
     // Seats remain visible while tall puzzles can scroll between them.
@@ -461,92 +520,6 @@ class _RoundShellState extends State<RoundShell> {
         ),
       );
     }
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [accent.withValues(alpha: .10), NovaColors.surface],
-                ),
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: accent.withValues(alpha: .22)),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: accent.withValues(alpha: .12),
-                      border: Border.all(color: accent.withValues(alpha: .25)),
-                    ),
-                    child: Icon(
-                      o.perfect ? Icons.check_rounded : Icons.refresh_rounded,
-                      size: 38,
-                      color: accent,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    o.perfect ? 'Gate opened!' : 'Good try!',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 27,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -.6,
-                    ),
-                  ),
-                  if (o.message.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 10),
-                      child: Text(
-                        o.message,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: NovaColors.textSecondary,
-                          fontSize: 14,
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 28),
-                  Semantics(
-                    label: '$score points',
-                    excludeSemantics: true,
-                    child: Text(
-                      '$score',
-                      key: const Key('result-score'),
-                      style: TextStyle(
-                        color: accent,
-                        fontSize: 68,
-                        height: 1.05,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -2,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            RoundJourney(
-              kind: widget.kind,
-              level: playerLevel,
-              round: roundNumber,
-              perfect: o.perfect,
-            ),
-          ],
-        ),
-      ),
-    );
+    return const SizedBox();
   }
 }

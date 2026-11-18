@@ -18,6 +18,7 @@ class GameHeader extends StatelessWidget implements PreferredSizeWidget {
     this.difficulty = 'Auto',
     this.title,
     this.showSettings = true,
+    this.animate = false,
   });
   final GameKind kind;
   final int points, round, level;
@@ -26,6 +27,10 @@ class GameHeader extends StatelessWidget implements PreferredSizeWidget {
   final String difficulty;
   final String? title;
   final bool showSettings;
+
+  /// Count points up and slide the level bar instead of jumping. Used for solo
+  /// play; shared-device matches switch between players, so they stay static.
+  final bool animate;
 
   @override
   Size get preferredSize => const Size.fromHeight(57);
@@ -73,9 +78,10 @@ class GameHeader extends StatelessWidget implements PreferredSizeWidget {
                       child: Semantics(
                         label: '$points points',
                         excludeSemantics: true,
-                        child: Text(
-                          '$points',
-                          key: const Key('game-total-score'),
+                        child: _CountUp(
+                          animate: animate,
+                          value: points,
+                          textKey: const Key('game-total-score'),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
@@ -121,13 +127,20 @@ class GameHeader extends StatelessWidget implements PreferredSizeWidget {
     ),
     bottom: PreferredSize(
       preferredSize: const Size.fromHeight(3),
-      child: LinearProgressIndicator(
-        value: level % 5 / 5,
-        minHeight: 3,
-        color: kind.accent.withValues(alpha: .75),
-        backgroundColor: NovaColors.surface,
-        semanticsLabel:
-            'Level $level. Next checkpoint level ${nextCheckpoint(level)}',
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(end: level % 5 / 5),
+        duration: animate && !MediaQuery.disableAnimationsOf(context)
+            ? const Duration(milliseconds: 450)
+            : Duration.zero,
+        curve: Curves.easeOutCubic,
+        builder: (context, value, _) => LinearProgressIndicator(
+          value: value,
+          minHeight: 3,
+          color: kind.accent.withValues(alpha: .75),
+          backgroundColor: NovaColors.surface,
+          semanticsLabel:
+              'Level $level. Next checkpoint level ${nextCheckpoint(level)}',
+        ),
       ),
     ),
     actions: [
@@ -152,5 +165,30 @@ class GameHeader extends StatelessWidget implements PreferredSizeWidget {
     height: 12,
     margin: const EdgeInsets.symmetric(horizontal: 9),
     color: NovaColors.textSecondary.withValues(alpha: .22),
+  );
+}
+
+/// Animates a whole number up (or down) to [value] when it changes.
+class _CountUp extends StatelessWidget {
+  const _CountUp({
+    required this.value,
+    required this.style,
+    required this.animate,
+    this.textKey,
+  });
+  final int value;
+  final bool animate;
+  final TextStyle style;
+  final Key? textKey;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween<double>(end: value.toDouble()),
+    duration: animate && !MediaQuery.disableAnimationsOf(context)
+        ? const Duration(milliseconds: 500)
+        : Duration.zero,
+    curve: Curves.easeOutCubic,
+    builder: (context, v, _) =>
+        Text('${v.round()}', key: textKey, style: style),
   );
 }

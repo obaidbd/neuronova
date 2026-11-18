@@ -47,11 +47,19 @@ void main() {
     );
     await t.tap(find.byKey(const Key('option-0')));
     await t.pumpAndSettle();
-    expect(find.byKey(const Key('result-score')), findsOneWidget);
+    // Feedback is a small pill above the puzzle; no separate result page.
+    expect(find.byKey(const Key('round-feedback')), findsOneWidget);
+    expect(find.text('Next round'), findsNothing);
     expect(store.completedRounds, 1);
     expect(store.xp, 0);
     expect(find.textContaining('XP'), findsNothing);
     // test-mode override must not change the real skill tier
     expect(store.skillFor('number_reasoning').recent.length, 1);
+    // The next round starts by itself after the short feedback pause.
+    await t.pump(const Duration(seconds: 3));
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('round-feedback')), findsNothing);
+    expect(find.text('R2'), findsOneWidget);
+    await t.pumpWidget(const SizedBox()); // dispose timers
   });
 }
