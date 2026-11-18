@@ -149,3 +149,28 @@ All six games expose Players & rounds in their in-game settings, with solo, 2–
 ### Player experience: Fresh Spark
 
 The ink/mint/gold palette, fixed three-column icon launcher, date-based Today's pick, and remembered Continue action make the next step easier to find. Every game shows quiet five-level checkpoint progress; solo results add a game-specific tip and a reachable bottom Next round button. Three choice games use two-column answer cards, Focus Dash highlights its target and selected count, and Path Recall displays route progress. Motion respects reduced-motion preferences. See [the design plan](docs/PLAYER_EXPERIENCE.md) for the rationale and validation scope.
+
+## Contributing
+
+Contributions are welcome. Open an issue first for larger changes. Before sending
+a pull request, run from `apps/player`:
+
+```sh
+flutter analyze
+flutter test
+```
+
+Native-speaker review of the draft Arabic and Bengali Word Quest vocabulary is
+especially appreciated; please open an issue to discuss corrections.
+
+Pull requests from first-time contributors need a maintainer's approval before CI runs.
+
+## Security
+
+Please report vulnerabilities privately; see [SECURITY.md](SECURITY.md).
+Do not commit secrets of any kind.
+
+## License
+
+Released under the [MIT License](LICENSE). The NeuroNova name and logo are not
+licensed for use as your own branding.
