@@ -34,6 +34,16 @@ flutter run -d chrome
 Open https://neuronova.muslimit.net/. The `Deploy web to neuronova.muslimit.net` workflow builds and uploads changes on pushes to `main` using the configured deployment secrets.
 
 
+## Flip Duel (two players or vs AI)
+
+A shared 6 × 6 green board of 18 fruit / animal pairs with purple "?" tokens. Open it from the wide **Flip Duel** card under the game grid. Tap two tokens per turn; a match removes the pair, scores +1 and keeps the turn, a miss shows both tokens for one second and passes the turn. The game ends when every pair is gone and the higher score wins (equal scores are a draw).
+
+- **Modes:** *vs AI* (Easy / Medium / Hard) or *2 Players* on one device. The bot only knows tiles it has actually seen flipped and forgets some of them (Easy remembers 30%, Medium 65%, Hard everything); it finishes a pair when it remembers both halves.
+- **Header:** both scores, a turn indicator, mode and difficulty selectors, sound toggle and Restart. The board is sized to fit a portrait phone without scrolling.
+- **Feel:** 3D flip animation, tap bounce, haptic ticks, a particle burst on matches, shrink-away removal. Reduced motion is respected.
+- **Sound:** flip, match, mismatch and win effects are synthesized with the Web Audio API in code (no audio files). Mobile builds and tests are silent for now.
+- Flip Duel does not touch the adaptive levels or saved points of the other games.
+
 ## Echo Grid local matches
 
 Echo Grid now opens a setup screen (the first-time tutorial is still available).

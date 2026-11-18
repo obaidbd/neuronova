@@ -6,6 +6,7 @@ import '../../core/game_kind.dart';
 import '../gameplay/round_shell.dart';
 import '../catalog/game_presentation.dart';
 import '../gameplay/echo_grid_screen.dart';
+import '../duel/flip_duel_screen.dart';
 
 /// Stable card positions; only the subtle daily suggestion changes.
 GameKind dailyGame(DateTime date) =>
@@ -171,6 +172,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                     );
                                   },
                                 ),
+                                const SizedBox(height: 12),
+                                _duelTile(),
                               ],
                             ),
                           ),
@@ -201,6 +204,61 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  /// Two-player pair-matching board; not part of the adaptive level system.
+  Widget _duelTile() => Semantics(
+    button: true,
+    label: 'Flip Duel, two players or against the computer',
+    excludeSemantics: true,
+    child: Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: const Key('home-flip-duel'),
+        borderRadius: BorderRadius.circular(22),
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute<void>(builder: (_) => const FlipDuelScreen())),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF9BE37A).withValues(alpha: .10),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: const Color(0xFF9BE37A).withValues(alpha: .3),
+            ),
+          ),
+          child: const Row(
+            children: [
+              Text('🐼', style: TextStyle(fontSize: 28)),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Flip Duel',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      '2 players or vs AI · match 18 pairs',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: NovaColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 
   Widget _suggestion(GameKind pick) => Container(
     padding: const EdgeInsets.all(14),

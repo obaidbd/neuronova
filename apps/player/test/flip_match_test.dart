@@ -76,10 +76,10 @@ void main() {
     await t.tap(find.byKey(Key('card-$other')));
     await t.pump();
     // while the miss is showing, taps are ignored
-    final third = List.generate(
-      p.cards.length,
-      (k) => k,
-    ).firstWhere((k) => k != 0 && k != other);
+    // a face-down tile whose picture differs from both open tiles
+    final third = List.generate(p.cards.length, (k) => k).firstWhere(
+      (k) => p.cards[k] != p.cards[0] && p.cards[k] != p.cards[other],
+    );
     await t.tap(find.byKey(Key('card-$third')));
     await t.pump();
     expect(find.text(flipSymbols[p.cards[third]].emoji), findsNothing);
