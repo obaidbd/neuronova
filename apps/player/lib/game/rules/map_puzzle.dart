@@ -3,22 +3,25 @@ import 'dart:ui';
 
 import '../content/bd_map.dart';
 
-/// How much help the board gives, from the game's difficulty setting.
+/// How much help the player gets. The board itself is always one blank
+/// outline of the area (no inner lines, no names), like the physical puzzle;
+/// the help level changes the pieces and how forgiving a drop is.
 enum MapHelp {
-  /// Every slot is outlined and named.
+  /// Names on the pieces, generous drops, a wrong drop says which region it was.
   easy,
 
-  /// Every slot is outlined; names are only on the pieces.
+  /// Names on the pieces, moderate drops.
   normal,
 
-  /// Only the country's outline is shown, no names.
+  /// No names anywhere until a piece is placed; precise drops.
   hard,
 }
 
 extension MapHelpInfo on MapHelp {
-  bool get showSlots => this != MapHelp.hard;
-  bool get namesOnSlots => this == MapHelp.easy;
   bool get namesOnPieces => this != MapHelp.hard;
+
+  /// A wrong drop tells the player which region they landed in.
+  bool get tellsWrongRegion => this == MapHelp.easy;
 
   /// How far a drop may miss a slot, as a fraction of the piece's size.
   double get tolerance => switch (this) {

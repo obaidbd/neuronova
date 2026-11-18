@@ -150,9 +150,10 @@ class _GameSettingsScreenState extends State<GameSettingsScreen> {
                   const Padding(
                     padding: EdgeInsets.only(top: 8),
                     child: Text(
-                      'Easy: every region is outlined and named. Normal: '
-                      'regions are outlined, names are on the pieces. Hard: '
-                      'only the country outline, no names.',
+                      'The board is always one blank outline. Easy: names on the '
+                      'pieces, generous drops, and a wrong drop tells you which '
+                      'region it was. Normal: names on the pieces, tighter drops. '
+                      'Hard: no names until a piece is placed, precise drops.',
                       style: TextStyle(
                         fontSize: 12,
                         color: NovaColors.textSecondary,

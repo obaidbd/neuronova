@@ -82,17 +82,33 @@ class MapBoardPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final zoom = controller.value.getMaxScaleOnAxis();
-    final hair = .9 / zoom;
-    final help = puzzle.help;
     // Big regions first so a small one inside a big one stays visible.
     final units = [...puzzle.pieces]..sort((a, b) => b.area.compareTo(a.area));
-    final ghost = Paint()..color = Colors.white.withValues(alpha: .9);
-    final ghostLine = Paint()
+    // The blank board: one empty outline of the whole area. Every slot's edge
+    // is drawn first, then every slot's face on top, so the edges between
+    // neighbouring slots disappear and only the outer outline remains.
+    final edge = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = hair
-      ..color = help.showSlots
-          ? const Color(0xFF9DB4C4)
-          : Colors.white.withValues(alpha: .9);
+      ..strokeWidth = 3.2 / zoom
+      ..strokeJoin = StrokeJoin.round
+      ..color = const Color(0xFF8FA9BC);
+    final face = Paint()..color = const Color(0xFFF7FAFC);
+    final seam = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = .8 / zoom
+      ..color = const Color(0xFFF7FAFC);
+    final empty = [
+      for (final u in units)
+        if (!puzzle.placed.contains(u.id)) paths[u.id]!,
+    ];
+    for (final path in empty) {
+      canvas.drawPath(path, edge);
+    }
+    for (final path in empty) {
+      canvas.drawPath(path, face);
+      canvas.drawPath(path, seam);
+    }
+    // Placed pieces sit in their slots with a thin white edge.
     final line = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.1 / zoom
@@ -100,14 +116,10 @@ class MapBoardPainter extends CustomPainter {
       ..color = Colors.white;
     final fill = Paint();
     for (final u in units) {
+      if (!puzzle.placed.contains(u.id)) continue;
       final path = paths[u.id]!;
-      if (puzzle.placed.contains(u.id)) {
-        canvas.drawPath(path, fill..color = colorOf(map, u));
-        canvas.drawPath(path, line);
-      } else {
-        canvas.drawPath(path, ghost);
-        canvas.drawPath(path, ghostLine);
-      }
+      canvas.drawPath(path, fill..color = colorOf(map, u));
+      canvas.drawPath(path, line);
     }
     // The hint pulses; a wrong drop flashes red.
     final h = hintId == null ? null : paths[hintId];
@@ -135,17 +147,17 @@ class MapBoardPainter extends CustomPainter {
     _names(canvas, size, units, zoom);
   }
 
-  /// Names appear once a region is big enough on screen to read.
+  /// A placed piece shows its name once it is big enough on screen for the
+  /// whole name to fit inside it (zoom in on crowded areas).
   void _names(Canvas canvas, Size size, List<MapUnit> units, double zoom) {
     final inv = Matrix4.copy(controller.value)..invert();
     final view = MatrixUtils.transformRect(inv, Offset.zero & size);
     for (final u in units) {
-      final placed = puzzle.placed.contains(u.id);
-      if (!placed && !puzzle.help.namesOnSlots) continue;
+      if (!puzzle.placed.contains(u.id)) continue;
       final box = projection.rectToBoard(u.bounds);
       if (!box.overlaps(view)) continue;
       final onScreen = box.width * zoom;
-      if (onScreen < 38) continue;
+      if (onScreen < 34) continue;
       final px = (onScreen * .17).clamp(9.0, 13.0);
       final fontScene = px / zoom;
       final key = '${u.id}@${fontScene.toStringAsFixed(2)}';
@@ -162,9 +174,9 @@ class MapBoardPainter extends CustomPainter {
           ),
           textDirection: TextDirection.ltr,
           maxLines: 1,
-          ellipsis: '…',
-        )..layout(maxWidth: box.width * .96);
+        )..layout();
       });
+      if (tp.width > box.width * .92) continue; // does not fit yet: zoom in
       final c = projection.toBoard(u.label);
       tp.paint(canvas, c - Offset(tp.width / 2, tp.height / 2));
     }

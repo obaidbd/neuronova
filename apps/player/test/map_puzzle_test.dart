@@ -213,11 +213,12 @@ void main() {
       expect(mapHelpForTier(1), MapHelp.easy);
       expect(mapHelpForTier(5), MapHelp.normal);
       expect(mapHelpForTier(9), MapHelp.hard);
-      expect(MapHelp.easy.namesOnSlots, isTrue);
-      expect(MapHelp.normal.namesOnSlots, isFalse);
+      expect(MapHelp.easy.tellsWrongRegion, isTrue);
+      expect(MapHelp.normal.tellsWrongRegion, isFalse);
       expect(MapHelp.normal.namesOnPieces, isTrue);
       expect(MapHelp.hard.namesOnPieces, isFalse);
-      expect(MapHelp.hard.showSlots, isFalse);
+      expect(MapHelp.easy.tolerance, greaterThan(MapHelp.normal.tolerance));
+      expect(MapHelp.normal.tolerance, greaterThan(MapHelp.hard.tolerance));
     });
   });
 

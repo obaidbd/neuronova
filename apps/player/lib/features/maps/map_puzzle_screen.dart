@@ -183,7 +183,7 @@ class _MapPuzzleScreenState extends State<MapPuzzleScreen>
         HapticFeedback.selectionClick();
         final w = pz.lastWrong!;
         wrongId = w.id;
-        status = pz.help.namesOnSlots
+        status = pz.help.tellsWrongRegion
             ? 'That is ${w.en} — try again'
             : 'Not there — try again';
         _wrongTimer?.cancel();
