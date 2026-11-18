@@ -3,28 +3,38 @@ import 'dart:ui';
 
 import '../content/bd_map.dart';
 
-/// How much help the player gets. The board never shows names on empty
-/// places; the help level changes whether each place is faintly tinted and
-/// outlined, plus the names on the pieces and how forgiving a drop is.
+/// How the empty board looks (a setting, independent of difficulty).
+enum MapBoardLook {
+  /// Every empty place is faintly tinted, has a thin border and shows its name
+  /// (where the name fits).
+  namesAndBorders,
+
+  /// Every empty place is faintly tinted with a thin border, no names.
+  borders,
+
+  /// One blank white outline of the whole area, like the physical puzzle.
+  blank,
+}
+
+extension MapBoardLookInfo on MapBoardLook {
+  bool get showSlots => this != MapBoardLook.blank;
+  bool get namesOnSlots => this == MapBoardLook.namesAndBorders;
+}
+
+/// How much help the player gets: names on the pieces, how forgiving a drop
+/// is, and whether a wrong drop says which region it landed in.
 enum MapHelp {
-  /// Faint tint and thin outline on every place, names on the pieces,
-  /// generous drops, and a wrong drop says which region it was.
+  /// Names on the pieces, generous drops, a wrong drop says which region it was.
   easy,
 
-  /// Faint tint and thin outline on every place, names on the pieces,
-  /// moderate drops.
+  /// Names on the pieces, moderate drops.
   normal,
 
-  /// One blank outline of the whole area, no names anywhere until a piece is
-  /// placed, precise drops.
+  /// No names on the pieces until they are placed, precise drops.
   hard,
 }
 
 extension MapHelpInfo on MapHelp {
-  /// Each empty place is faintly tinted and outlined (otherwise the board is
-  /// one blank outline).
-  bool get showSlots => this != MapHelp.hard;
-
   bool get namesOnPieces => this != MapHelp.hard;
 
   /// A wrong drop tells the player which region they landed in.
@@ -114,6 +124,7 @@ class MapPuzzle {
     required this.map,
     required this.selection,
     required this.help,
+    this.look = MapBoardLook.borders,
     int? seed,
   }) : pieces = map.piecesFor(selection) {
     order = [for (final p in pieces) p.id]..shuffle(Random(seed));
@@ -122,6 +133,9 @@ class MapPuzzle {
   final BdMap map;
   final MapSelection selection;
   final MapHelp help;
+
+  /// How the empty board is drawn; can change while playing (Settings).
+  MapBoardLook look;
   final List<MapUnit> pieces;
 
   /// The tray order (shuffled, repeatable by seed).

@@ -29,6 +29,7 @@ class _GameSettingsScreenState extends State<GameSettingsScreen> {
   late bool untimed = widget.store.untimedFor(widget.kind.skillKey);
   late int duelPlayers = widget.store.duelPlayers;
   late bool mapAround = widget.store.mapPiecesAround;
+  late int mapLook = widget.store.mapBoardLook;
   bool busy = false;
   late bool autoHandoff = widget.store.autoHandoffFor(widget.kind.skillKey);
   late int previewSeconds = widget.kind == GameKind.echoGrid
@@ -58,6 +59,7 @@ class _GameSettingsScreenState extends State<GameSettingsScreen> {
       }
       if (widget.kind == GameKind.mapPuzzle) {
         await widget.store.setMapPiecesAround(mapAround);
+        await widget.store.setMapBoardLook(mapLook);
       }
       if (widget.kind == GameKind.echoGrid) {
         await widget.store.setEchoPreviewSeconds(0, previewSeconds);
@@ -153,6 +155,38 @@ class _GameSettingsScreenState extends State<GameSettingsScreen> {
                 if (game == GameKind.mapPuzzle) ...[
                   const SizedBox(height: 20),
                   const Text(
+                    'How the empty board looks',
+                    style: TextStyle(color: NovaColors.textSecondary),
+                  ),
+                  const SizedBox(height: 8),
+                  SegmentedButton<int>(
+                    key: const Key('map-look'),
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(value: 0, label: Text('Names + borders')),
+                      ButtonSegment(value: 1, label: Text('Borders')),
+                      ButtonSegment(value: 2, label: Text('Blank')),
+                    ],
+                    selected: {mapLook},
+                    onSelectionChanged: busy
+                        ? null
+                        : (s) => setState(() => mapLook = s.first),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Names + borders: every place is faintly tinted, outlined '
+                      'and named (where the name fits; zoom in for small ones). '
+                      'Borders: tinted and outlined, no names. Blank: one white '
+                      'outline of the whole area, like the wooden puzzle.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: NovaColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
                     'Where the pieces wait',
                     style: TextStyle(color: NovaColors.textSecondary),
                   ),
@@ -192,11 +226,10 @@ class _GameSettingsScreenState extends State<GameSettingsScreen> {
                   const Padding(
                     padding: EdgeInsets.only(top: 8),
                     child: Text(
-                      'Easy: every place is faintly tinted and outlined, names on '
-                      'the pieces, generous drops, and a wrong drop tells you '
-                      'which region it was. Normal: the same, with tighter '
-                      'drops. Hard: one blank outline of the whole area, no '
-                      'names until a piece is placed, precise drops.',
+                      'Difficulty: Easy puts names on the pieces, forgives near '
+                      'misses and tells you which region a wrong drop landed in. '
+                      'Normal has names on the pieces and tighter drops. Hard has '
+                      'no names on the pieces and precise drops.',
                       style: TextStyle(
                         fontSize: 12,
                         color: NovaColors.textSecondary,

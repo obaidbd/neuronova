@@ -121,6 +121,7 @@ class _MapPuzzleScreenState extends State<MapPuzzleScreen>
       map: m,
       selection: selection,
       help: _helpFromSettings(),
+      look: MapBoardLook.values[widget.store.mapBoardLook],
       seed: widget.seed,
     );
     roundId = '${DateTime.now().microsecondsSinceEpoch}-${selection.key}';
@@ -294,10 +295,12 @@ class _MapPuzzleScreenState extends State<MapPuzzleScreen>
       ),
     );
     if (!mounted || puzzle == null) return;
-    // A new help level starts a fresh puzzle; a new layout just redraws.
+    // A new help level starts a fresh puzzle; a new layout or board look just
+    // redraws, so a game in progress carries on.
     if (_helpFromSettings() != puzzle!.help) {
       setState(_newPuzzle);
     } else {
+      puzzle!.look = MapBoardLook.values[widget.store.mapBoardLook];
       setState(() {});
     }
   }

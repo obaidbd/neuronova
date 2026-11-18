@@ -209,13 +209,29 @@ void main() {
       expect(q.result().accuracy, closeTo(8 / 28, 1e-9));
     });
 
+    test('board looks: names + borders, borders, blank', () {
+      expect(MapBoardLook.namesAndBorders.showSlots, isTrue);
+      expect(MapBoardLook.namesAndBorders.namesOnSlots, isTrue);
+      expect(MapBoardLook.borders.showSlots, isTrue);
+      expect(MapBoardLook.borders.namesOnSlots, isFalse);
+      expect(MapBoardLook.blank.showSlots, isFalse);
+      expect(MapBoardLook.blank.namesOnSlots, isFalse);
+      // borders is the default and the look is independent of difficulty
+      for (final help in MapHelp.values) {
+        final p = MapPuzzle(
+          map: map,
+          selection: MapSelection.country,
+          help: help,
+          seed: 1,
+        );
+        expect(p.look, MapBoardLook.borders);
+      }
+    });
+
     test('help levels follow the difficulty tier', () {
       expect(mapHelpForTier(1), MapHelp.easy);
       expect(mapHelpForTier(5), MapHelp.normal);
       expect(mapHelpForTier(9), MapHelp.hard);
-      expect(MapHelp.easy.showSlots, isTrue);
-      expect(MapHelp.normal.showSlots, isTrue);
-      expect(MapHelp.hard.showSlots, isFalse);
       expect(MapHelp.easy.tellsWrongRegion, isTrue);
       expect(MapHelp.normal.tellsWrongRegion, isFalse);
       expect(MapHelp.normal.namesOnPieces, isTrue);
@@ -443,15 +459,15 @@ void main() {
       await t.pumpAndSettle();
       expect(find.byKey(const Key('game-untimed')), findsNothing);
       expect(find.byKey(const Key('match-settings')), findsNothing);
-      expect(find.byKey(const Key('map-attribution')), findsOneWidget);
-      expect(find.textContaining('CC BY 3.0 IGO'), findsOneWidget);
       await t.tap(find.byKey(const Key('game-difficulty')));
       await t.pumpAndSettle();
       await t.tap(find.text('Hard').last);
       await t.pumpAndSettle();
       final save = find.byKey(const Key('save-game-settings'));
-      await t.drag(find.byType(ListView), const Offset(0, -400));
+      await t.drag(find.byType(ListView), const Offset(0, -700));
       await t.pumpAndSettle();
+      expect(find.byKey(const Key('map-attribution')), findsOneWidget);
+      expect(find.textContaining('CC BY 3.0 IGO'), findsOneWidget);
       await t.tap(save);
       await t.pumpAndSettle();
       expect(find.byKey(const Key('map-title')), findsOneWidget);
@@ -590,7 +606,7 @@ void main() {
       expect(find.byKey(const Key('map-layout')), findsOneWidget);
       await t.tap(find.text('Scrolling tray'));
       await t.pump();
-      await t.drag(find.byType(ListView), const Offset(0, -400));
+      await t.drag(find.byType(ListView), const Offset(0, -700));
       await t.pumpAndSettle();
       await t.tap(find.byKey(const Key('save-game-settings')));
       await t.pumpAndSettle();
@@ -602,12 +618,68 @@ void main() {
       await t.pumpAndSettle();
       await t.tap(find.text('Around the map'));
       await t.pump();
-      await t.drag(find.byType(ListView), const Offset(0, -400));
+      await t.drag(find.byType(ListView), const Offset(0, -700));
       await t.pumpAndSettle();
       await t.tap(find.byKey(const Key('save-game-settings')));
       await t.pumpAndSettle();
       expect(store.mapPiecesAround, isTrue);
       expect(find.byKey(const Key('map-around')), findsOneWidget);
+      await t.pumpWidget(const SizedBox());
+    });
+
+    MapBoardLook currentLook(WidgetTester t) {
+      final paint = t.widget<CustomPaint>(
+        find.byWidgetPredicate(
+          (w) => w is CustomPaint && w.painter is MapBoardPainter,
+        ),
+      );
+      return (paint.painter as MapBoardPainter).puzzle.look;
+    }
+
+    testWidgets('the board look is chosen in Settings; the game carries on', (
+      t,
+    ) async {
+      await open(t);
+      expect(store.mapBoardLook, 1);
+      expect(currentLook(t), MapBoardLook.borders); // the default
+      final pz = shadow(MapSelection.country);
+      await t.tapAt(spot(t, pz, pz.unit(pz.order.first)));
+      await t.pump();
+      expect(text(t, 'map-progress'), '1 / 8 placed');
+
+      Future<void> choose(String label) async {
+        await t.tap(find.byKey(const Key('game-settings')));
+        await t.pumpAndSettle();
+        expect(find.byKey(const Key('map-look')), findsOneWidget);
+        await t.tap(find.text(label));
+        await t.pump();
+        await t.drag(find.byType(ListView), const Offset(0, -700));
+        await t.pumpAndSettle();
+        await t.tap(find.byKey(const Key('save-game-settings')));
+        await t.pumpAndSettle();
+      }
+
+      await choose('Names + borders');
+      expect(store.mapBoardLook, 0);
+      expect(currentLook(t), MapBoardLook.namesAndBorders);
+      expect(text(t, 'map-progress'), '1 / 8 placed'); // not restarted
+      await choose('Blank');
+      expect(store.mapBoardLook, 2);
+      expect(currentLook(t), MapBoardLook.blank);
+      expect(text(t, 'map-progress'), '1 / 8 placed');
+      await choose('Borders');
+      expect(currentLook(t), MapBoardLook.borders);
+      expect(t.takeException(), isNull);
+      await t.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('a saved board look is used when the game opens', (t) async {
+      await open(t, prefs: {'map_board_look': 2});
+      expect(currentLook(t), MapBoardLook.blank);
+      await t.pumpWidget(const SizedBox());
+      await open(t, prefs: {'map_board_look': 0});
+      expect(currentLook(t), MapBoardLook.namesAndBorders);
+      expect(t.takeException(), isNull);
       await t.pumpWidget(const SizedBox());
     });
   });
