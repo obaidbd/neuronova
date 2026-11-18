@@ -27,10 +27,12 @@ class _S extends State<PatternPortalGame> {
     seed: widget.seed,
   );
   bool done = false;
+  int? picked;
 
   void _pick(int i) {
     if (done) return;
     done = true;
+    setState(() => picked = i);
     final ok = p.isCorrect(i);
     widget.onFinished(
       RoundOutcome(
@@ -74,6 +76,8 @@ class _S extends State<PatternPortalGame> {
           count: p.options.length,
           accent: GameKind.patternPortal.accent,
           onPick: _pick,
+          pickedIndex: picked,
+          correctIndex: p.answerIndex,
           itemBuilder: (i) =>
               ShapeChip(p.options[i].shape, p.options[i].color, size: 36),
           labelBuilder: (i) =>

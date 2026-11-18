@@ -26,10 +26,12 @@ class _S extends State<NumberForgeGame> {
     seed: widget.seed,
   );
   bool done = false;
+  int? picked;
 
   void _pick(int i) {
     if (done) return;
     done = true;
+    setState(() => picked = i);
     final ok = p.isCorrect(i);
     final fixed = p.options.firstWhere(p.fits);
     widget.onFinished(
@@ -71,6 +73,8 @@ class _S extends State<NumberForgeGame> {
           count: p.options.length,
           accent: GameKind.numberForge.accent,
           onPick: _pick,
+          pickedIndex: picked,
+          correctIndex: p.options.indexWhere(p.fits),
           itemHeight: 72,
           labelBuilder: (i) => p.options[i],
           itemBuilder: (i) => Text(
