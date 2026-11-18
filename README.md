@@ -2,7 +2,7 @@
 
 *Play. Think. Discover.* — a family-friendly puzzle adventure (spec: "Production-Ready Game Design & Development Master Specification v2.0").
 
-## Status: Phase 1 + 2 + 3 (all six core minigames)
+## Status: Phase 1 + 2 + 3 (six core minigames, plus Flip Match)
 
 `apps/player` (Flutter) now has all six minigames, each with a pure-Dart rules module, seeded deterministic generation and tests:
 
@@ -14,6 +14,7 @@
 | Number Forge | numbers | exactly one option makes the equation true (deterministic evaluation) |
 | Word Quest | vocabulary (EN/বাংলা/العربية) | one correct picture; starter vocab marked `draft` |
 | Path Recall | spatial memory | self-avoiding route, legal-move checks, optional reverse mode |
+| Flip Match | pair memory | seeded deal where every fruit / animal appears exactly twice; 3-12 pairs by tier; success at 70% of attempts right |
 
 Also: design system, guest-first flow, tutorial, per-skill adaptive tiers, scoring (timed/untimed), idempotent local point commits, untimed accessible mode.
 
@@ -32,6 +33,16 @@ flutter run -d chrome
 ## Try it in a browser
 Open https://neuronova.muslimit.net/. The `Deploy web to neuronova.muslimit.net` workflow builds and uploads changes on pushes to `main` using the configured deployment secrets.
 
+
+## Flip Duel (two players or vs AI)
+
+The eighth card in the home grid. A shared 6 × 6 green board of 18 fruit / animal pairs with purple "?" tokens. Tap two tokens per turn; a match removes the pair, scores +1 and keeps the turn, a miss shows both tokens for one second and passes the turn. The game ends when every pair is gone and the higher score wins (equal scores are a draw).
+
+- **Same look and system as the other games:** the shared header (game icon, points | round | level, level bar, Settings), the same Settings screen (Difficulty Auto / Easy / Normal / Hard sets the bot), and the same points and endless level system. A finished game **against the AI** earns 0-10 points by your share of the pairs and a level-up for a win; **Auto** difficulty follows your level (low levels meet an easy bot, higher levels a perfect memory). Two-player games never change saved progress.
+- **Modes:** *vs AI* (Easy / Medium / Hard) or *2 Players* on one device, switchable on the screen. The bot only knows tiles it has actually seen flipped and forgets some of them (Easy remembers 30%, Medium 65%, Hard everything); it finishes a pair when it remembers both halves.
+- **On screen:** both scores, a turn indicator, mode and difficulty selectors, sound toggle and Restart. The board is sized to fit a portrait phone without scrolling.
+- **Feel:** 3D flip animation, tap bounce, haptic ticks, a particle burst on matches, shrink-away removal, points counting up in the header. Reduced motion is respected.
+- **Sound:** flip, match, mismatch and win effects are synthesized with the Web Audio API in code (no audio files). Mobile builds and tests are silent for now.
 
 ## Echo Grid local matches
 

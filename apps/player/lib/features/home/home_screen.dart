@@ -6,6 +6,7 @@ import '../../core/game_kind.dart';
 import '../gameplay/round_shell.dart';
 import '../catalog/game_presentation.dart';
 import '../gameplay/echo_grid_screen.dart';
+import '../duel/flip_duel_screen.dart';
 
 /// Stable card positions; only the subtle daily suggestion changes.
 GameKind dailyGame(DateTime date) =>
@@ -34,12 +35,14 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => game == GameKind.echoGrid
-            ? EchoGridScreen(
-                store: widget.store,
-                tierOverride: widget.store.practiceTierFor(game.skillKey),
-              )
-            : RoundShell(kind: game, store: widget.store),
+        builder: (_) => switch (game) {
+          GameKind.echoGrid => EchoGridScreen(
+            store: widget.store,
+            tierOverride: widget.store.practiceTierFor(game.skillKey),
+          ),
+          GameKind.flipDuel => FlipDuelScreen(store: widget.store),
+          _ => RoundShell(kind: game, store: widget.store),
+        },
       ),
     );
     if (mounted) setState(() {});
