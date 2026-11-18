@@ -12,6 +12,7 @@ extension GamePresentation on GameKind {
     GameKind.pathRecall => const Color(0xFFEDA4D4),
     GameKind.flipMatch => const Color(0xFF9BE37A),
     GameKind.flipDuel => const Color(0xFFFFA05C),
+    GameKind.mapPuzzle => const Color(0xFF4FD6E8),
   };
   String get category => switch (this) {
     GameKind.echoGrid => 'MEMORY',
@@ -22,6 +23,7 @@ extension GamePresentation on GameKind {
     GameKind.pathRecall => 'SPATIAL',
     GameKind.flipMatch => 'PAIRS',
     GameKind.flipDuel => 'DUEL',
+    GameKind.mapPuzzle => 'MAP',
   };
   String get description => switch (this) {
     GameKind.echoGrid => 'A little glow. A sharper memory. Remember the tiles and bring the pattern back to life.',
@@ -32,6 +34,7 @@ extension GamePresentation on GameKind {
     GameKind.pathRecall => 'Follow a trail with your eyes, then retrace it from memory. Every step is a new challenge.',
     GameKind.flipMatch => 'Flip the cards, remember where each fruit and animal hides, and match every pair.',
     GameKind.flipDuel => 'A memory duel on one shared board. Take turns flipping tiles, match pairs and out-remember a friend or the AI.',
+    GameKind.mapPuzzle => 'Build the map of Bangladesh piece by piece: divisions, districts or upazilas, the whole country or just one area.',
   };
   List<String> get instructions => switch (this) {
     GameKind.echoGrid => [
@@ -73,6 +76,11 @@ extension GamePresentation on GameKind {
       'Flip two tiles each turn. A match scores a point and you go again.',
       'A miss shows both tiles for a second, then the turn passes.',
       'Most pairs wins. Play a friend on one device or the AI (Easy, Medium, Hard).',
+    ],
+    GameKind.mapPuzzle => [
+      'Choose the whole country or one area, and divisions, districts or upazilas as pieces.',
+      'Drag a piece from the tray onto the map, or tap a piece and then tap its place. Pinch or use + and − to zoom.',
+      'Every piece placed is a new region learned. Fewer wrong tries and hints mean more points.',
     ],
   };
 }

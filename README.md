@@ -34,6 +34,16 @@ flutter run -d chrome
 Open https://neuronova.muslimit.net/. The `Deploy web to neuronova.muslimit.net` workflow builds and uploads changes on pushes to `main` using the configured deployment secrets.
 
 
+## Map Puzzle (Bangladesh)
+
+The ninth card: build the map of Bangladesh piece by piece, like a physical map jigsaw.
+
+- **Choose the map** (layers button, or the first screen): the *whole country* or a single *division* or *district*, with *divisions* (8), *districts* (64) or *upazilas* (544) as the pieces. Inside an area only finer levels are offered (for example the upazilas of one district). Villages and the world map are not available yet (see below).
+- **Play:** the pieces wait in a scrolling tray above the map, shuffled and coloured by division. Drag one onto the map, or tap a piece and then tap its place. Pinch, drag and the **+ / −** buttons zoom the map for crowded areas; the fit button shows the whole map again. A **hint** (bulb) zooms to and pulses the right place and costs score.
+- **Difficulty** (Settings): *Easy* outlines and names every place; *Normal* outlines places and names only the pieces; *Hard* shows only the country's outline and no names (the division colours still help). Easy also forgives near misses more.
+- **Scoring:** same system as the other games: 0-10 points from accuracy (pieces per attempt) and hints, a level-up for 70% or better, points count up in the shared header.
+- **Data:** boundaries from the Bangladesh Bureau of Statistics / OCHA ROAP via geoBoundaries (CC BY 3.0 IGO, shown in the game's Settings), Bengali names from nuhil/bangladesh-geocode (MIT). Both are simplified into three small JSON files (about 360 KB) in `apps/player/assets/maps/bd/` by `scripts/build_bd_map.py`; see `assets/maps/ATTRIBUTION.md`. Works offline.
+
 ## Flip Duel (two players or vs AI)
 
 The eighth card in the home grid. A shared 6 × 6 green board of 18 fruit / animal pairs with purple "?" tokens. Tap two tokens per turn; a match removes the pair, scores +1 and keeps the turn, a miss shows both tokens for one second and passes the turn. The game ends when every pair is gone and the higher score wins (equal scores are a draw).

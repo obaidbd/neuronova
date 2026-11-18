@@ -10,7 +10,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   for (final kind in GameKind.values.where(
-    (k) => k != GameKind.echoGrid && k != GameKind.flipDuel,
+    (k) =>
+        k != GameKind.echoGrid &&
+        k != GameKind.flipDuel &&
+        k != GameKind.mapPuzzle,
   )) {
     testWidgets('${kind.title} renders at every tier without errors', (
       t,

@@ -20,22 +20,28 @@ class NovaBoardFrame extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(10),
     this.radius = 26,
+    this.colors = const [novaBoardLight, novaBoardDark],
+    this.borderColor = const Color(0xFF8CF0BC),
   });
   final Widget child;
   final EdgeInsets padding;
   final double radius;
+
+  /// Board gradient (green by default; the map puzzle uses a sea blue).
+  final List<Color> colors;
+  final Color borderColor;
 
   @override
   Widget build(BuildContext context) => Container(
     padding: padding,
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(radius),
-      gradient: const LinearGradient(
+      gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [novaBoardLight, novaBoardDark],
+        colors: colors,
       ),
-      border: Border.all(color: const Color(0xFF8CF0BC), width: 2),
+      border: Border.all(color: borderColor, width: 2),
       boxShadow: const [
         BoxShadow(
           color: Color(0x66000000),

@@ -50,6 +50,11 @@ class ProgressStore {
   Future<void> setDuelPlayers(int n) =>
       _prefs.setInt('duel_players', n.clamp(2, 4));
 
+  /// Map Puzzle: the last chosen map, e.g. `all/district` or `d3/upazila`.
+  String? get mapSelection => _prefs.getString('map_selection');
+  Future<void> setMapSelection(String key) =>
+      _prefs.setString('map_selection', key);
+
   int pointsFor(String game) => _prefs.getInt('points_$game') ?? 0;
   int xpFor(String game) => _prefs.getInt('xp_$game') ?? 0;
   int roundsFor(String game) => _prefs.getInt('rounds_$game') ?? 0;
