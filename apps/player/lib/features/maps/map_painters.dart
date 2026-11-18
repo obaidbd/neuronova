@@ -84,29 +84,47 @@ class MapBoardPainter extends CustomPainter {
     final zoom = controller.value.getMaxScaleOnAxis();
     // Big regions first so a small one inside a big one stays visible.
     final units = [...puzzle.pieces]..sort((a, b) => b.area.compareTo(a.area));
-    // The blank board: one empty outline of the whole area. Every slot's edge
-    // is drawn first, then every slot's face on top, so the edges between
-    // neighbouring slots disappear and only the outer outline remains.
+    // Empty places. Every slot's edge is drawn first, then every slot's face
+    // on top, so the edge between two neighbours disappears under the faces
+    // and only the area's outer outline remains. Unless the board look is
+    // Blank, each face carries a faint tint of its division and a hairline
+    // border (drawn last, over all faces) so the extent of every place is
+    // visible without any names.
     final edge = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.2 / zoom
       ..strokeJoin = StrokeJoin.round
       ..color = const Color(0xFF8FA9BC);
-    final face = Paint()..color = const Color(0xFFF7FAFC);
+    final blank = const Color(0xFFF7FAFC);
     final seam = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = .8 / zoom
-      ..color = const Color(0xFFF7FAFC);
+      ..color = blank;
     final empty = [
       for (final u in units)
-        if (!puzzle.placed.contains(u.id)) paths[u.id]!,
+        if (!puzzle.placed.contains(u.id)) u,
     ];
-    for (final path in empty) {
-      canvas.drawPath(path, edge);
+    for (final u in empty) {
+      canvas.drawPath(paths[u.id]!, edge);
     }
-    for (final path in empty) {
+    final face = Paint();
+    for (final u in empty) {
+      final path = paths[u.id]!;
+      face.color = puzzle.look.showSlots
+          ? Color.lerp(Colors.white, colorOf(map, u), .42)!
+          : blank;
       canvas.drawPath(path, face);
-      canvas.drawPath(path, seam);
+      if (!puzzle.look.showSlots) canvas.drawPath(path, seam);
+    }
+    if (puzzle.look.showSlots) {
+      final border = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = .55 / zoom
+        ..strokeJoin = StrokeJoin.round
+        ..color = const Color(0xFF8FA9BC).withValues(alpha: .7);
+      for (final u in empty) {
+        canvas.drawPath(paths[u.id]!, border);
+      }
     }
     // Placed pieces sit in their slots with a thin white edge.
     final line = Paint()
@@ -147,20 +165,23 @@ class MapBoardPainter extends CustomPainter {
     _names(canvas, size, units, zoom);
   }
 
-  /// A placed piece shows its name once it is big enough on screen for the
-  /// whole name to fit inside it (zoom in on crowded areas).
+  /// A name is drawn once its place is big enough on screen for the whole name
+  /// to fit inside it (zoom in on crowded areas). Placed pieces always show
+  /// theirs; empty places only with the "names" board look.
   void _names(Canvas canvas, Size size, List<MapUnit> units, double zoom) {
     final inv = Matrix4.copy(controller.value)..invert();
     final view = MatrixUtils.transformRect(inv, Offset.zero & size);
     for (final u in units) {
-      if (!puzzle.placed.contains(u.id)) continue;
+      final placed = puzzle.placed.contains(u.id);
+      if (!placed && !puzzle.look.namesOnSlots) continue;
       final box = projection.rectToBoard(u.bounds);
       if (!box.overlaps(view)) continue;
       final onScreen = box.width * zoom;
       if (onScreen < 34) continue;
       final px = (onScreen * .17).clamp(9.0, 13.0);
       final fontScene = px / zoom;
-      final key = '${u.id}@${fontScene.toStringAsFixed(2)}';
+      final key =
+          '${u.id}${placed ? 'p' : 'e'}@${fontScene.toStringAsFixed(2)}';
       final tp = _labels.putIfAbsent(key, () {
         if (_labels.length > 800) _labels.clear();
         return TextPainter(
@@ -169,7 +190,7 @@ class MapBoardPainter extends CustomPainter {
             style: TextStyle(
               fontSize: fontScene,
               fontWeight: FontWeight.w600,
-              color: const Color(0xFF1C2B3A),
+              color: placed ? const Color(0xFF1C2B3A) : const Color(0xFF55708A),
             ),
           ),
           textDirection: TextDirection.ltr,

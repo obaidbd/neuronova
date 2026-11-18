@@ -121,6 +121,7 @@ class _MapPuzzleScreenState extends State<MapPuzzleScreen>
       map: m,
       selection: selection,
       help: _helpFromSettings(),
+      look: MapBoardLook.values[widget.store.mapBoardLook],
       seed: widget.seed,
     );
     roundId = '${DateTime.now().microsecondsSinceEpoch}-${selection.key}';
@@ -294,7 +295,14 @@ class _MapPuzzleScreenState extends State<MapPuzzleScreen>
       ),
     );
     if (!mounted || puzzle == null) return;
-    if (_helpFromSettings() != puzzle!.help) setState(_newPuzzle);
+    // A new help level starts a fresh puzzle; a new layout or board look just
+    // redraws, so a game in progress carries on.
+    if (_helpFromSettings() != puzzle!.help) {
+      setState(_newPuzzle);
+    } else {
+      puzzle!.look = MapBoardLook.values[widget.store.mapBoardLook];
+      setState(() {});
+    }
   }
 
   // ---- layout --------------------------------------------------------------
@@ -334,15 +342,23 @@ class _MapPuzzleScreenState extends State<MapPuzzleScreen>
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
                     child: Column(
-                      children: [
-                        _infoBar(pz),
-                        const SizedBox(height: 6),
-                        _tray(pz),
-                        const SizedBox(height: 4),
-                        _statusLine(pz),
-                        const SizedBox(height: 4),
-                        Expanded(child: _board(pz)),
-                      ],
+                      children: widget.store.mapPiecesAround
+                          ? [
+                              _infoBar(pz),
+                              const SizedBox(height: 2),
+                              _statusLine(pz),
+                              const SizedBox(height: 6),
+                              Expanded(child: _around(pz)),
+                            ]
+                          : [
+                              _infoBar(pz),
+                              const SizedBox(height: 6),
+                              _tray(pz),
+                              const SizedBox(height: 4),
+                              _statusLine(pz),
+                              const SizedBox(height: 4),
+                              Expanded(child: _board(pz)),
+                            ],
                     ),
                   ),
                 ),
@@ -413,7 +429,7 @@ class _MapPuzzleScreenState extends State<MapPuzzleScreen>
     );
   }
 
-  Widget _pieceCard(MapPuzzle pz, String id) {
+  Widget _pieceCard(MapPuzzle pz, String id, {bool compact = false}) {
     final u = pz.unit(id);
     final selected = id == selectedId;
     final card = _PieceCard(
@@ -421,16 +437,19 @@ class _MapPuzzleScreenState extends State<MapPuzzleScreen>
       color: colorOf(map!, u),
       selected: selected,
       showName: pz.help.namesOnPieces,
+      compact: compact,
     );
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3),
+      padding: EdgeInsets.symmetric(horizontal: compact ? 1 : 3),
       child: GestureDetector(
         key: Key('piece-$id'),
         behavior: HitTestBehavior.opaque,
         onTap: () => _select(id),
         child: Draggable<String>(
           data: id,
-          affinity: Axis.vertical, // sideways drags scroll the tray
+          // In the scrolling tray sideways drags scroll; around the map any
+          // direction drags the piece.
+          affinity: compact ? null : Axis.vertical,
           dragAnchorStrategy: (d, c, p) => const Offset(40, 40),
           onDragStarted: () => _select(id),
           onDragEnd: (details) {
@@ -453,6 +472,55 @@ class _MapPuzzleScreenState extends State<MapPuzzleScreen>
       ),
     );
   }
+
+  /// The map in the middle with the next pieces placed on all four sides, so
+  /// nothing scrolls. Free rows above and below take any spare height.
+  Widget _around(MapPuzzle pz) => LayoutBuilder(
+    builder: (context, c) {
+      const cw = 54.0, ch = 64.0;
+      final w = c.maxWidth, h = c.maxHeight;
+      final mapW = max(w - 2 * cw, 120.0);
+      final aspect = pz.bounds.height / pz.bounds.width;
+      final mapNeeded = min(mapW * aspect, h - 2 * ch);
+      final rows = max(1, ((h - mapNeeded) / (2 * ch)).floor());
+      final mapH = max(h - 2 * rows * ch, 120.0);
+      final cols = max(1, (w / cw).floor());
+      final side = max(0, (mapH / ch).floor());
+      final left = (w - cols * cw) / 2;
+      final sideTop = rows * ch + (mapH - side * ch) / 2;
+      // Where cards go, in the order the next pieces fill them.
+      final spots = <Offset>[
+        for (var r = 0; r < rows; r++)
+          for (var k = 0; k < cols; k++) Offset(left + k * cw, r * ch),
+        for (var k = 0; k < side; k++) Offset(w - cw, sideTop + k * ch),
+        for (var r = rows - 1; r >= 0; r--)
+          for (var k = cols - 1; k >= 0; k--)
+            Offset(left + k * cw, h - (r + 1) * ch),
+        for (var k = side - 1; k >= 0; k--) Offset(0, sideTop + k * ch),
+      ];
+      final shown = pz.remaining.take(spots.length).toList();
+      return Stack(
+        key: const Key('map-around'),
+        children: [
+          Positioned(
+            left: cw,
+            top: rows * ch,
+            width: w - 2 * cw,
+            height: mapH,
+            child: _board(pz),
+          ),
+          for (var i = 0; i < shown.length; i++)
+            Positioned(
+              left: spots[i].dx,
+              top: spots[i].dy,
+              width: cw,
+              height: ch,
+              child: _pieceCard(pz, shown[i], compact: true),
+            ),
+        ],
+      );
+    },
+  );
 
   Widget _statusLine(MapPuzzle pz) {
     final sel = selectedId == null ? null : pz.unit(selectedId!);
@@ -656,7 +724,9 @@ class _PieceCard extends StatelessWidget {
     required this.color,
     required this.selected,
     required this.showName,
+    this.compact = false,
   });
+  final bool compact;
   final MapUnit unit;
   final Color color;
   final bool selected;
@@ -665,7 +735,9 @@ class _PieceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => AnimatedContainer(
     duration: const Duration(milliseconds: 150),
-    padding: const EdgeInsets.fromLTRB(4, 6, 4, 4),
+    padding: compact
+        ? const EdgeInsets.fromLTRB(2, 3, 2, 2)
+        : const EdgeInsets.fromLTRB(4, 6, 4, 4),
     decoration: BoxDecoration(
       color: selected
           ? GameKind.mapPuzzle.accent.withValues(alpha: .18)
@@ -684,15 +756,15 @@ class _PieceCard extends StatelessWidget {
             painter: PiecePainter(unit, color, selected: selected),
           ),
         ),
-        const SizedBox(height: 3),
+        SizedBox(height: compact ? 1 : 3),
         SizedBox(
-          height: 14,
+          height: compact ? 11 : 14,
           child: showName
               ? Text(
                   unit.nameBn(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11),
+                  style: TextStyle(fontSize: compact ? 9 : 11),
                 )
               : null,
         ),

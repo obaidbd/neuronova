@@ -209,6 +209,25 @@ void main() {
       expect(q.result().accuracy, closeTo(8 / 28, 1e-9));
     });
 
+    test('board looks: names + borders, borders, blank', () {
+      expect(MapBoardLook.namesAndBorders.showSlots, isTrue);
+      expect(MapBoardLook.namesAndBorders.namesOnSlots, isTrue);
+      expect(MapBoardLook.borders.showSlots, isTrue);
+      expect(MapBoardLook.borders.namesOnSlots, isFalse);
+      expect(MapBoardLook.blank.showSlots, isFalse);
+      expect(MapBoardLook.blank.namesOnSlots, isFalse);
+      // borders is the default and the look is independent of difficulty
+      for (final help in MapHelp.values) {
+        final p = MapPuzzle(
+          map: map,
+          selection: MapSelection.country,
+          help: help,
+          seed: 1,
+        );
+        expect(p.look, MapBoardLook.borders);
+      }
+    });
+
     test('help levels follow the difficulty tier', () {
       expect(mapHelpForTier(1), MapHelp.easy);
       expect(mapHelpForTier(5), MapHelp.normal);
@@ -230,11 +249,15 @@ void main() {
       MapSelection selection = MapSelection.country,
       Size size = const Size(390, 844),
       Map<String, Object> prefs = const {},
+      bool around = true,
     }) async {
       t.view.physicalSize = size;
       t.view.devicePixelRatio = 1;
       addTearDown(t.view.reset);
-      SharedPreferences.setMockInitialValues(prefs);
+      SharedPreferences.setMockInitialValues({
+        'map_pieces_around': around,
+        ...prefs,
+      });
       store = await ProgressStore.open();
       await t.pumpWidget(
         MaterialApp(
@@ -264,7 +287,7 @@ void main() {
         MapPuzzle(map: map, selection: s, help: help, seed: 3);
 
     testWidgets('shows the header, tray, board and progress', (t) async {
-      await open(t);
+      await open(t, around: false);
       expect(find.byKey(const Key('game-score-bar')), findsOneWidget);
       expect(find.byKey(const Key('game-settings')), findsOneWidget);
       expect(text(t, 'map-title'), 'Bangladesh · Divisions');
@@ -436,14 +459,15 @@ void main() {
       await t.pumpAndSettle();
       expect(find.byKey(const Key('game-untimed')), findsNothing);
       expect(find.byKey(const Key('match-settings')), findsNothing);
-      expect(find.byKey(const Key('map-attribution')), findsOneWidget);
-      expect(find.textContaining('CC BY 3.0 IGO'), findsOneWidget);
       await t.tap(find.byKey(const Key('game-difficulty')));
       await t.pumpAndSettle();
       await t.tap(find.text('Hard').last);
       await t.pumpAndSettle();
       final save = find.byKey(const Key('save-game-settings'));
-      await t.ensureVisible(save);
+      await t.drag(find.byType(ListView), const Offset(0, -700));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('map-attribution')), findsOneWidget);
+      expect(find.textContaining('CC BY 3.0 IGO'), findsOneWidget);
       await t.tap(save);
       await t.pumpAndSettle();
       expect(find.byKey(const Key('map-title')), findsOneWidget);
@@ -470,5 +494,193 @@ void main() {
         expect(t.takeException(), isNull);
       });
     }
+
+    for (final size in const [Size(390, 844), Size(360, 640), Size(320, 568)]) {
+      testWidgets('pieces around the map on ${size.width.toInt()}x'
+          '${size.height.toInt()}: all four sides, no scrolling, no overlap', (
+        t,
+      ) async {
+        await open(
+          t,
+          size: size,
+          selection: const MapSelection(level: MapLevel.district),
+        );
+        expect(find.byKey(const Key('map-around')), findsOneWidget);
+        expect(find.byKey(const Key('map-tray')), findsNothing);
+        expect(find.byType(ListView), findsNothing); // nothing scrolls
+        final pz = shadow(const MapSelection(level: MapLevel.district));
+        final mapRect = t.getRect(find.byKey(const Key('map-board')));
+        final cards = <Rect>[];
+        for (final id in pz.order) {
+          final f = find.byKey(Key('piece-$id'));
+          if (f.evaluate().isEmpty) continue;
+          final r = t.getRect(f);
+          cards.add(r);
+          expect(r.left, greaterThanOrEqualTo(0));
+          expect(r.right, lessThanOrEqualTo(size.width + .5));
+          expect(r.bottom, lessThanOrEqualTo(size.height));
+          expect(r.overlaps(mapRect), isFalse, reason: 'card over the map');
+        }
+        // enough cards to matter, and on every side of the map
+        expect(cards.length, greaterThanOrEqualTo(10));
+        expect(
+          cards.any((r) => r.bottom <= mapRect.top + 1),
+          isTrue,
+          reason: 'above',
+        );
+        expect(
+          cards.any((r) => r.top >= mapRect.bottom - 1),
+          isTrue,
+          reason: 'below',
+        );
+        expect(
+          cards.any((r) => r.right <= mapRect.left + 1),
+          isTrue,
+          reason: 'left',
+        );
+        expect(
+          cards.any((r) => r.left >= mapRect.right - 1),
+          isTrue,
+          reason: 'right',
+        );
+        // the cards do not overlap each other
+        for (var i = 0; i < cards.length; i++) {
+          for (var j = i + 1; j < cards.length; j++) {
+            expect(
+              cards[i].deflate(1).overlaps(cards[j].deflate(1)),
+              isFalse,
+              reason: 'cards $i and $j overlap',
+            );
+          }
+        }
+        expect(t.takeException(), isNull);
+      });
+    }
+
+    testWidgets('around the map: drag a card from the side onto the map', (
+      t,
+    ) async {
+      await open(t);
+      final pz = shadow(MapSelection.country);
+      // every one of the 8 pieces is on screen around the map
+      for (final id in pz.order) {
+        expect(find.byKey(Key('piece-$id')), findsOneWidget);
+      }
+      final id = pz.order.last;
+      final g = await t.startGesture(t.getCenter(find.byKey(Key('piece-$id'))));
+      await g.moveBy(const Offset(12, 12));
+      await t.pump();
+      await g.moveTo(spot(t, pz, pz.unit(id)));
+      await t.pump();
+      await g.up();
+      await t.pump();
+      expect(text(t, 'map-progress'), '1 / 8 placed');
+      expect(find.byKey(Key('piece-$id')), findsNothing);
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('around the map: placed pieces free their cards for the next '
+        'ones', (t) async {
+      await open(t, selection: const MapSelection(level: MapLevel.upazila));
+      final pz = shadow(const MapSelection(level: MapLevel.upazila));
+      final shown = [
+        for (final id in pz.order)
+          if (find.byKey(Key('piece-$id')).evaluate().isNotEmpty) id,
+      ];
+      expect(shown.length, lessThan(pz.total)); // 500+ pieces: only some show
+      expect(shown, pz.order.take(shown.length)); // the next ones, in order
+      final first = pz.order.first;
+      await t.tapAt(spot(t, pz, pz.unit(first)));
+      await t.pump();
+      expect(find.byKey(Key('piece-$first')), findsNothing);
+      final next = pz.order[shown.length]; // a new piece joined the ring
+      expect(find.byKey(Key('piece-$next')), findsOneWidget);
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('the layout is chosen in Settings and remembered', (t) async {
+      await open(t);
+      expect(find.byKey(const Key('map-around')), findsOneWidget);
+      await t.tap(find.byKey(const Key('game-settings')));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('map-layout')), findsOneWidget);
+      await t.tap(find.text('Scrolling tray'));
+      await t.pump();
+      await t.drag(find.byType(ListView), const Offset(0, -700));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('save-game-settings')));
+      await t.pumpAndSettle();
+      expect(store.mapPiecesAround, isFalse);
+      expect(find.byKey(const Key('map-tray')), findsOneWidget);
+      expect(find.byKey(const Key('map-around')), findsNothing);
+      // and back again
+      await t.tap(find.byKey(const Key('game-settings')));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Around the map'));
+      await t.pump();
+      await t.drag(find.byType(ListView), const Offset(0, -700));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('save-game-settings')));
+      await t.pumpAndSettle();
+      expect(store.mapPiecesAround, isTrue);
+      expect(find.byKey(const Key('map-around')), findsOneWidget);
+      await t.pumpWidget(const SizedBox());
+    });
+
+    MapBoardLook currentLook(WidgetTester t) {
+      final paint = t.widget<CustomPaint>(
+        find.byWidgetPredicate(
+          (w) => w is CustomPaint && w.painter is MapBoardPainter,
+        ),
+      );
+      return (paint.painter as MapBoardPainter).puzzle.look;
+    }
+
+    testWidgets('the board look is chosen in Settings; the game carries on', (
+      t,
+    ) async {
+      await open(t);
+      expect(store.mapBoardLook, 1);
+      expect(currentLook(t), MapBoardLook.borders); // the default
+      final pz = shadow(MapSelection.country);
+      await t.tapAt(spot(t, pz, pz.unit(pz.order.first)));
+      await t.pump();
+      expect(text(t, 'map-progress'), '1 / 8 placed');
+
+      Future<void> choose(String label) async {
+        await t.tap(find.byKey(const Key('game-settings')));
+        await t.pumpAndSettle();
+        expect(find.byKey(const Key('map-look')), findsOneWidget);
+        await t.tap(find.text(label));
+        await t.pump();
+        await t.drag(find.byType(ListView), const Offset(0, -700));
+        await t.pumpAndSettle();
+        await t.tap(find.byKey(const Key('save-game-settings')));
+        await t.pumpAndSettle();
+      }
+
+      await choose('Names + borders');
+      expect(store.mapBoardLook, 0);
+      expect(currentLook(t), MapBoardLook.namesAndBorders);
+      expect(text(t, 'map-progress'), '1 / 8 placed'); // not restarted
+      await choose('Blank');
+      expect(store.mapBoardLook, 2);
+      expect(currentLook(t), MapBoardLook.blank);
+      expect(text(t, 'map-progress'), '1 / 8 placed');
+      await choose('Borders');
+      expect(currentLook(t), MapBoardLook.borders);
+      expect(t.takeException(), isNull);
+      await t.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('a saved board look is used when the game opens', (t) async {
+      await open(t, prefs: {'map_board_look': 2});
+      expect(currentLook(t), MapBoardLook.blank);
+      await t.pumpWidget(const SizedBox());
+      await open(t, prefs: {'map_board_look': 0});
+      expect(currentLook(t), MapBoardLook.namesAndBorders);
+      expect(t.takeException(), isNull);
+      await t.pumpWidget(const SizedBox());
+    });
   });
 }

@@ -3,9 +3,26 @@ import 'dart:ui';
 
 import '../content/bd_map.dart';
 
-/// How much help the player gets. The board itself is always one blank
-/// outline of the area (no inner lines, no names), like the physical puzzle;
-/// the help level changes the pieces and how forgiving a drop is.
+/// How the empty board looks (a setting, independent of difficulty).
+enum MapBoardLook {
+  /// Every empty place is faintly tinted, has a thin border and shows its name
+  /// (where the name fits).
+  namesAndBorders,
+
+  /// Every empty place is faintly tinted with a thin border, no names.
+  borders,
+
+  /// One blank white outline of the whole area, like the physical puzzle.
+  blank,
+}
+
+extension MapBoardLookInfo on MapBoardLook {
+  bool get showSlots => this != MapBoardLook.blank;
+  bool get namesOnSlots => this == MapBoardLook.namesAndBorders;
+}
+
+/// How much help the player gets: names on the pieces, how forgiving a drop
+/// is, and whether a wrong drop says which region it landed in.
 enum MapHelp {
   /// Names on the pieces, generous drops, a wrong drop says which region it was.
   easy,
@@ -13,7 +30,7 @@ enum MapHelp {
   /// Names on the pieces, moderate drops.
   normal,
 
-  /// No names anywhere until a piece is placed; precise drops.
+  /// No names on the pieces until they are placed, precise drops.
   hard,
 }
 
@@ -107,6 +124,7 @@ class MapPuzzle {
     required this.map,
     required this.selection,
     required this.help,
+    this.look = MapBoardLook.borders,
     int? seed,
   }) : pieces = map.piecesFor(selection) {
     order = [for (final p in pieces) p.id]..shuffle(Random(seed));
@@ -115,6 +133,9 @@ class MapPuzzle {
   final BdMap map;
   final MapSelection selection;
   final MapHelp help;
+
+  /// How the empty board is drawn; can change while playing (Settings).
+  MapBoardLook look;
   final List<MapUnit> pieces;
 
   /// The tray order (shuffled, repeatable by seed).

@@ -28,7 +28,11 @@ void main() {
     for (var t = 1; t <= 10; t++) {
       for (var s = 0; s < seeds; s++) {
         final p = NumberForgePuzzle.generate(tier: t, seed: s);
-        expect(p.options.where(p.fits).length, 1, reason: '${p.display} t$t s$s');
+        expect(
+          p.options.where(p.fits).length,
+          1,
+          reason: '${p.display} t$t s$s',
+        );
         expect(p.options.toSet().length, p.options.length);
       }
     }

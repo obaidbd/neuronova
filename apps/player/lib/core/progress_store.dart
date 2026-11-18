@@ -50,6 +50,17 @@ class ProgressStore {
   Future<void> setDuelPlayers(int n) =>
       _prefs.setInt('duel_players', n.clamp(2, 4));
 
+  /// Map Puzzle: pieces around the map (true) or in a scrolling tray above it.
+  bool get mapPiecesAround => _prefs.getBool('map_pieces_around') ?? true;
+  Future<void> setMapPiecesAround(bool v) =>
+      _prefs.setBool('map_pieces_around', v);
+
+  /// Map Puzzle: how the empty board looks (0 names + borders, 1 borders,
+  /// 2 blank).
+  int get mapBoardLook => (_prefs.getInt('map_board_look') ?? 1).clamp(0, 2);
+  Future<void> setMapBoardLook(int v) =>
+      _prefs.setInt('map_board_look', v.clamp(0, 2));
+
   /// Map Puzzle: the last chosen map, e.g. `all/district` or `d3/upazila`.
   String? get mapSelection => _prefs.getString('map_selection');
   Future<void> setMapSelection(String key) =>
