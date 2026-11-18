@@ -26,6 +26,7 @@ class _GameSettingsScreenState extends State<GameSettingsScreen> {
     widget.store.practiceTierFor(widget.kind.skillKey),
   );
   late bool untimed = widget.store.untimedFor(widget.kind.skillKey);
+  late int duelPlayers = widget.store.duelPlayers;
   bool busy = false;
   late bool autoHandoff = widget.store.autoHandoffFor(widget.kind.skillKey);
   late int previewSeconds = widget.kind == GameKind.echoGrid
@@ -50,6 +51,9 @@ class _GameSettingsScreenState extends State<GameSettingsScreen> {
       await widget.store.setPracticeTierFor(widget.kind.skillKey, tier);
       await widget.store.setUntimedFor(widget.kind.skillKey, untimed);
       await widget.store.setAutoHandoffFor(widget.kind.skillKey, autoHandoff);
+      if (widget.kind == GameKind.flipDuel) {
+        await widget.store.setDuelPlayers(duelPlayers);
+      }
       if (widget.kind == GameKind.echoGrid) {
         await widget.store.setEchoPreviewSeconds(0, previewSeconds);
       }
@@ -141,6 +145,37 @@ class _GameSettingsScreenState extends State<GameSettingsScreen> {
                       ),
                     ),
                   ),
+                if (game == GameKind.flipDuel) ...[
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Players when playing with friends',
+                    style: TextStyle(color: NovaColors.textSecondary),
+                  ),
+                  const SizedBox(height: 8),
+                  SegmentedButton<int>(
+                    key: const Key('duel-players'),
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(value: 2, label: Text('2 players')),
+                      ButtonSegment(value: 3, label: Text('3 players')),
+                      ButtonSegment(value: 4, label: Text('4 players')),
+                    ],
+                    selected: {duelPlayers},
+                    onSelectionChanged: busy
+                        ? null
+                        : (s) => setState(() => duelPlayers = s.first),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Against the AI it is always you versus the AI.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: NovaColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
                 // Flip Duel has no timer, turn handoff or seat setup.
                 if (game != GameKind.flipDuel) ...[
                   const SizedBox(height: 12),

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/theme.dart';
 import '../../../game/rules/path_recall.dart';
+import '../nova_board.dart';
 import '../round_shell.dart';
 import '../match_board.dart';
 
@@ -146,15 +147,20 @@ class _S extends State<PathRecallGame> {
               child: SizedBox(
                 width: side,
                 height: side,
-                child: GridView.count(
-                  crossAxisCount: p.size,
-                  mainAxisSpacing: 6,
-                  crossAxisSpacing: 6,
-                  padding: EdgeInsets.zero,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: [
-                    for (var i = 0; i < p.cells; i++) cell(i, show.indexOf(i)),
-                  ],
+                child: NovaBoardFrame(
+                  padding: const EdgeInsets.all(8),
+                  radius: 22,
+                  child: GridView.count(
+                    crossAxisCount: p.size,
+                    mainAxisSpacing: 6,
+                    crossAxisSpacing: 6,
+                    padding: EdgeInsets.zero,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [
+                      for (var i = 0; i < p.cells; i++)
+                        cell(i, show.indexOf(i)),
+                    ],
+                  ),
                 ),
               ),
             ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/theme.dart';
 import '../../../game/rules/focus_dash.dart';
+import '../nova_board.dart';
 import '../round_shell.dart';
 import '../match_board.dart';
 import '../shapes.dart';
@@ -69,55 +70,63 @@ class _S extends State<FocusDashGame> {
           ),
         ),
         const SizedBox(height: 16),
-        GridView.count(
-          shrinkWrap: true,
-          crossAxisCount: p.cols,
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-          physics: const NeverScrollableScrollPhysics(),
-          children: [
-            for (var i = 0; i < p.items.length; i++)
-              Semantics(
-                button: true,
-                selected: selected.contains(i),
-                label:
-                    '${colorNames[p.items[i].color]} ${shapeNames[p.items[i].shape]}',
-                child: InkWell(
-                  key: Key('item-$i'),
-                  onTap: () => setState(
-                    () => selected.contains(i)
-                        ? selected.remove(i)
-                        : selected.add(i),
-                  ),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: selected.contains(i)
-                          ? NovaColors.blue.withValues(alpha: .15)
-                          : NovaColors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: selected.contains(i)
-                            ? NovaColors.text
-                            : Colors.transparent,
-                        width: 3,
-                      ),
+        NovaBoardFrame(
+          padding: const EdgeInsets.all(8),
+          radius: 22,
+          child: GridView.count(
+            shrinkWrap: true,
+            crossAxisCount: p.cols,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              for (var i = 0; i < p.items.length; i++)
+                Semantics(
+                  button: true,
+                  selected: selected.contains(i),
+                  label:
+                      '${colorNames[p.items[i].color]} ${shapeNames[p.items[i].shape]}',
+                  child: InkWell(
+                    key: Key('item-$i'),
+                    onTap: () => setState(
+                      () => selected.contains(i)
+                          ? selected.remove(i)
+                          : selected.add(i),
                     ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        ShapeChip(p.items[i].shape, p.items[i].color, size: 34),
-                        if (selected.contains(i))
-                          const Positioned(
-                            top: 4,
-                            right: 4,
-                            child: Icon(Icons.check_circle, size: 18),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: selected.contains(i)
+                            ? NovaColors.blue.withValues(alpha: .15)
+                            : NovaColors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: selected.contains(i)
+                              ? NovaColors.text
+                              : Colors.transparent,
+                          width: 3,
+                        ),
+                      ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          ShapeChip(
+                            p.items[i].shape,
+                            p.items[i].color,
+                            size: 34,
                           ),
-                      ],
+                          if (selected.contains(i))
+                            const Positioned(
+                              top: 4,
+                              right: 4,
+                              child: Icon(Icons.check_circle, size: 18),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: 10),
         Text(

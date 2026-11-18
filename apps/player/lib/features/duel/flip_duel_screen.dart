@@ -9,26 +9,28 @@ import '../../core/game_kind.dart';
 import '../../core/progress_store.dart';
 import '../../core/sfx.dart';
 import '../../game/rules/adaptive.dart';
+import '../../game/rules/flip_duel.dart';
+import '../../game/rules/flip_match.dart';
 import '../../game/rules/scoring.dart';
 import '../catalog/game_presentation.dart';
 import '../catalog/game_settings_screen.dart';
 import '../gameplay/game_header.dart';
-import '../../game/rules/flip_duel.dart';
-import '../../game/rules/flip_match.dart';
+import '../gameplay/nova_board.dart';
 
-/// Who plays player 2.
-enum DuelMode { vsAi, twoPlayers }
+/// Who plays: you against the AI, or friends sharing the device (2 to 4, set
+/// in the game's Settings).
+enum DuelMode { vsAi, friends }
 
-// Colours of the plastic board game: green board, purple token backs.
-const _boardLight = Color(0xFF4FD18B);
-const _boardDark = Color(0xFF1E9E63);
-const _recess = Color(0xFF137A4C);
-const _tokenLight = Color(0xFFA97CFF);
-const _tokenDark = Color(0xFF5B34B8);
-const _cream = Color(0xFFFFF8E7);
+/// Seat colours: player 1 to 4.
+const _seatColors = [
+  NovaColors.emerald,
+  NovaColors.gold,
+  Color(0xFF83B6FF),
+  Color(0xFFFF8E91),
+];
 
-/// A shared 6 x 6 board of 18 fruit / animal pairs for two players, taking
-/// turns on one device or against a bot with a memory.
+/// A shared 6 x 6 board of 18 fruit / animal pairs. Players take turns on one
+/// device, or you play against a bot with a memory.
 class FlipDuelScreen extends StatefulWidget {
   const FlipDuelScreen({
     super.key,
@@ -67,13 +69,6 @@ class _Burst {
 class _FlipDuelScreenState extends State<FlipDuelScreen> {
   late DuelMode mode = widget.mode;
   late BotLevel level = widget.level ?? _levelFromSettings();
-  BotLevel _levelFromSettings() {
-    final key = GameKind.flipDuel.skillKey;
-    return botLevelForTier(
-      widget.store.practiceTierFor(key) ?? widget.store.levelFor(key),
-    );
-  }
-
   late final Sfx sfx = widget.sfx ?? createSfx();
   late DuelGame game;
   late DuelBot bot;
@@ -90,7 +85,19 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
   late String roundId;
   bool committed = false;
 
+  /// Side of the board in pixels, remembered from the last layout so bursts
+  /// can be placed over the two matched tiles.
+  double _side = 300;
+
+  int get players => mode == DuelMode.vsAi ? 2 : widget.store.duelPlayers;
   bool get botTurn => mode == DuelMode.vsAi && game.turn == 1 && !game.over;
+
+  BotLevel _levelFromSettings() {
+    final key = GameKind.flipDuel.skillKey;
+    return botLevelForTier(
+      widget.store.practiceTierFor(key) ?? widget.store.levelFor(key),
+    );
+  }
 
   @override
   void initState() {
@@ -107,7 +114,7 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
 
   void _newGame([int? seed]) {
     _timer?.cancel();
-    game = DuelGame(seed: seed);
+    game = DuelGame(players: players, seed: seed);
     roundId = '${DateTime.now().microsecondsSinceEpoch}-${game.hashCode}';
     committed = false;
     gain = null;
@@ -117,9 +124,9 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
     setState(() {});
   }
 
-  String get p0 => mode == DuelMode.vsAi ? 'You' : 'Player 1';
-  String get p1 => mode == DuelMode.vsAi ? 'AI' : 'Player 2';
-  String nameOf(int player) => player == 0 ? p0 : p1;
+  String nameOf(int player) => mode == DuelMode.vsAi
+      ? (player == 0 ? 'You' : 'AI')
+      : 'Player ${player + 1}';
 
   void _play(void Function() sound) {
     if (!muted) sound();
@@ -148,7 +155,7 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
         _play(sfx.match);
         HapticFeedback.lightImpact();
         _addBurst(game.pendingPair!);
-        // Let both players see the pair, then take it off the board.
+        // Let everyone see the pair, then take it off the board.
         _timer = Timer(const Duration(milliseconds: 650), _finishMatch);
       case FlipOutcome.miss:
         locked = true;
@@ -178,7 +185,7 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
 
   /// A finished game against the AI feeds the same points / level system as
   /// the other games: 0-10 points by your share of the pairs, and a level-up
-  /// for a win. Two-player games never touch saved progress.
+  /// for a win. Games with friends never touch saved progress.
   Future<void> _commit() async {
     if (mode != DuelMode.vsAi || committed) return;
     committed = true;
@@ -225,6 +232,7 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
   Future<void> _openSettings() async {
     _timer?.cancel();
     locked = true; // freeze the board while settings are open
+    final seatsBefore = players;
     await Navigator.of(context).push<GameSettingsAction>(
       MaterialPageRoute(
         builder: (_) =>
@@ -234,11 +242,11 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
     if (!mounted) return;
     final before = level;
     level = _levelFromSettings();
-    if (level != before) {
-      _newGame(); // a new difficulty starts a fresh game
+    if (level != before || players != seatsBefore) {
+      _newGame(); // a new difficulty or player count starts a fresh game
       return;
     }
-    // Same difficulty: carry on exactly where the game was paused.
+    // Same settings: carry on exactly where the game was paused.
     locked = false;
     if (game.pendingPair != null) {
       _finishMatch();
@@ -271,7 +279,7 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
         points: widget.store.pointsFor(GameKind.flipDuel.skillKey),
         round: widget.store.roundsFor(GameKind.flipDuel.skillKey) + 1,
         level: widget.store.levelFor(GameKind.flipDuel.skillKey),
-        difficulty: mode == DuelMode.vsAi ? level.label : '2 players',
+        difficulty: mode == DuelMode.vsAi ? level.label : '$players players',
         onSettings: _openSettings,
         animate: true,
         gain: gain,
@@ -318,13 +326,40 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
     );
   }
 
+  /// One player's card. Two players get a wide card (name left, score right);
+  /// three or four get narrow stacked cards so they all fit on one row.
   Widget _scoreCard(int player) {
     final active = game.turn == player && !game.over;
-    final color = player == 0 ? NovaColors.emerald : NovaColors.gold;
+    final color = _seatColors[player];
+    final wide = game.players == 2;
+    final name = Text(
+      nameOf(player),
+      key: Key('duel-name-$player'),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: wide ? 13 : 11,
+        fontWeight: FontWeight.w700,
+        color: active ? color : NovaColors.textSecondary,
+      ),
+    );
+    final score = Semantics(
+      label: '${nameOf(player)} score ${game.scores[player]}',
+      excludeSemantics: true,
+      child: Text(
+        '${game.scores[player]}',
+        key: Key('duel-score-$player'),
+        style: TextStyle(
+          fontSize: wide ? 26 : 24,
+          fontWeight: FontWeight.w800,
+          color: color,
+        ),
+      ),
+    );
     return Expanded(
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: wide ? 12 : 6, vertical: 8),
         decoration: BoxDecoration(
           color: active ? color.withValues(alpha: .16) : NovaColors.surface,
           borderRadius: BorderRadius.circular(16),
@@ -333,61 +368,46 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
             width: active ? 2 : 1,
           ),
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                nameOf(player),
-                key: Key('duel-name-$player'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: active ? color : NovaColors.textSecondary,
-                ),
-              ),
-            ),
-            Semantics(
-              label: '${nameOf(player)} score ${game.scores[player]}',
-              excludeSemantics: true,
-              child: Text(
-                '${game.scores[player]}',
-                key: Key('duel-score-$player'),
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  color: color,
-                ),
-              ),
-            ),
-          ],
-        ),
+        child: wide
+            ? Row(
+                children: [
+                  Expanded(child: name),
+                  score,
+                ],
+              )
+            : Column(mainAxisSize: MainAxisSize.min, children: [name, score]),
       ),
     );
   }
 
   Widget _scoreboard() => Row(
     children: [
-      _scoreCard(0),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Tooltip(
-          message: '${game.pairsLeft} pairs left',
-          child: Text(
-            '${game.pairsLeft}\nleft',
-            textAlign: TextAlign.center,
-            key: const Key('duel-left'),
-            style: const TextStyle(
-              fontSize: 11,
-              height: 1.1,
-              color: NovaColors.textSecondary,
-            ),
-          ),
-        ),
-      ),
-      _scoreCard(1),
+      for (var i = 0; i < game.players; i++) ...[
+        _scoreCard(i),
+        if (i == 0 && game.players == 2)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: _left(),
+          )
+        else if (i < game.players - 1)
+          const SizedBox(width: 6),
+      ],
     ],
+  );
+
+  /// Pairs still on the board.
+  Widget _left() => Tooltip(
+    message: '${game.pairsLeft} pairs left',
+    child: Text(
+      '${game.pairsLeft}\nleft',
+      textAlign: TextAlign.center,
+      key: const Key('duel-left'),
+      style: const TextStyle(
+        fontSize: 11,
+        height: 1.1,
+        color: NovaColors.textSecondary,
+      ),
+    ),
   );
 
   /// Current turn indicator, in words.
@@ -396,7 +416,7 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
     if (game.over) {
       text = 'Game over';
     } else if (botTurn) {
-      text = '$p1 is thinking…';
+      text = '${nameOf(1)} is thinking…';
     } else if (game.pendingPair != null) {
       text = 'Match! +1 for ${nameOf(game.turn)}';
     } else if (game.busy) {
@@ -414,7 +434,7 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
         style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w700,
-          color: game.turn == 0 ? NovaColors.emerald : NovaColors.gold,
+          color: _seatColors[game.turn],
         ),
       ),
     );
@@ -431,16 +451,16 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
             visualDensity: VisualDensity.compact,
             tapTargetSize: MaterialTapTargetSize.padded,
           ),
-          segments: const [
-            ButtonSegment(
+          segments: [
+            const ButtonSegment(
               value: DuelMode.vsAi,
               label: Text('vs AI'),
               icon: Icon(Icons.smart_toy_outlined, size: 18),
             ),
             ButtonSegment(
-              value: DuelMode.twoPlayers,
-              label: Text('2 Players'),
-              icon: Icon(Icons.people_alt_outlined, size: 18),
+              value: DuelMode.friends,
+              label: Text('${widget.store.duelPlayers} Players'),
+              icon: const Icon(Icons.people_alt_outlined, size: 18),
             ),
           ],
           selected: {mode},
@@ -485,69 +505,46 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
 
   Widget _board(double side) {
     final (pad, gap) = _metrics(side);
-    final cell = (side - pad * 2 - gap * (DuelGame.cols - 1)) / DuelGame.cols;
-    return Container(
+    return Stack(
       key: const Key('duel-board'),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(26),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [_boardLight, _boardDark],
-        ),
-        border: Border.all(color: const Color(0xFF8CF0BC), width: 2),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x66000000),
-            blurRadius: 14,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Padding(
-            padding: EdgeInsets.all(pad),
-            child: Column(
-              children: [
-                for (var r = 0; r < DuelGame.cols; r++) ...[
-                  if (r > 0) SizedBox(height: gap),
-                  Expanded(
-                    child: Row(
-                      children: [
-                        for (var col = 0; col < DuelGame.cols; col++) ...[
-                          if (col > 0) SizedBox(width: gap),
-                          Expanded(child: _slot(r * DuelGame.cols + col)),
-                        ],
+      children: [
+        NovaBoardFrame(
+          padding: EdgeInsets.all(pad),
+          child: Column(
+            children: [
+              for (var r = 0; r < DuelGame.cols; r++) ...[
+                if (r > 0) SizedBox(height: gap),
+                Expanded(
+                  child: Row(
+                    children: [
+                      for (var col = 0; col < DuelGame.cols; col++) ...[
+                        if (col > 0) SizedBox(width: gap),
+                        Expanded(child: _slot(r * DuelGame.cols + col)),
                       ],
-                    ),
+                    ],
                   ),
-                ],
-              ],
-            ),
-          ),
-          for (final b in bursts)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: _BurstView(
-                  key: ValueKey(b.id),
-                  centers: b.centers,
-                  radius: cell * .8,
-                  onDone: () {
-                    if (mounted) setState(() => bursts.remove(b));
-                  },
                 ),
+              ],
+            ],
+          ),
+        ),
+        for (final b in bursts)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: NovaBurst(
+                key: ValueKey(b.id),
+                centers: b.centers,
+                radius: (side / 6) * .8,
+                onDone: () {
+                  if (mounted) setState(() => bursts.remove(b));
+                },
               ),
             ),
-          if (game.over) Positioned.fill(child: _winPanel()),
-        ],
-      ),
+          ),
+        if (game.over) Positioned.fill(child: _winPanel()),
+      ],
     );
   }
-
-  /// Side of the board in pixels, remembered from the last layout so bursts
-  /// can be placed over the two matched tiles.
-  double _side = 300;
 
   void _addBurst((int, int) pair) {
     final (pad, gap) = _metrics(_side);
@@ -559,58 +556,38 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
     bursts.add(_Burst(_burstId++, [centerOf(pair.$1), centerOf(pair.$2)]));
   }
 
-  Widget _slot(int i) {
-    final removed = game.removed.contains(i);
-    return LayoutBuilder(
-      builder: (context, c) {
-        final size = min(c.maxWidth, c.maxHeight);
-        return Center(
-          child: SizedBox(
-            width: size,
-            height: size,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // The recessed hole the token sits in.
-                DecoratedBox(
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [Color(0xFF1B9560), _recess],
-                      stops: [.55, 1],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0x55FFFFFF),
-                        blurRadius: 1,
-                        offset: Offset(0, 1.5),
-                      ),
-                    ],
-                  ),
-                  child: SizedBox.expand(),
-                ),
-                _Token(
-                  key: Key('duel-token-$i'),
-                  faceUp: game.isFaceUp(i),
-                  removed: removed,
-                  symbol: flipSymbols[game.symbolAt(i)],
-                  size: size,
-                  label: 'Tile ${i + 1}',
-                  onTap: () => _onTap(i),
-                ),
-              ],
-            ),
+  Widget _slot(int i) => LayoutBuilder(
+    builder: (context, c) {
+      final size = min(c.maxWidth, c.maxHeight);
+      return Center(
+        child: NovaSlot(
+          size: size,
+          child: NovaToken(
+            key: Key('duel-token-$i'),
+            faceUp: game.isFaceUp(i),
+            removed: game.removed.contains(i),
+            symbol: flipSymbols[game.symbolAt(i)],
+            size: size,
+            label: 'Tile ${i + 1}',
+            onTap: () => _onTap(i),
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
 
   Widget _winPanel() {
-    final w = game.winner;
-    final title = w == null
-        ? 'It’s a draw!'
-        : (mode == DuelMode.vsAi && w == 0 ? 'You win!' : '${nameOf(w)} wins!');
+    final w = game.winners;
+    final String title;
+    if (w.length == game.players) {
+      title = 'It’s a draw!';
+    } else if (w.length > 1) {
+      title = '${w.map(nameOf).join(' & ')} tie!';
+    } else if (mode == DuelMode.vsAi && w.first == 0) {
+      title = 'You win!';
+    } else {
+      title = '${nameOf(w.first)} wins!';
+    }
     return Container(
       key: const Key('duel-win'),
       decoration: BoxDecoration(
@@ -631,15 +608,16 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
               liveRegion: true,
               child: Text(
                 title,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 26,
+                  fontSize: 24,
                   fontWeight: FontWeight.w800,
                 ),
               ),
             ),
             const SizedBox(height: 4),
             Text(
-              '${game.scores[0]}  –  ${game.scores[1]}',
+              game.scores.join('  –  '),
               key: const Key('duel-final'),
               style: const TextStyle(
                 fontSize: 22,
@@ -672,245 +650,4 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
       ),
     );
   }
-}
-
-/// A round token: purple "?" back, cartoon front, 3D flip, tap bounce, and a
-/// shrink-away when its pair is taken off the board.
-class _Token extends StatefulWidget {
-  const _Token({
-    super.key,
-    required this.faceUp,
-    required this.removed,
-    required this.symbol,
-    required this.size,
-    required this.label,
-    required this.onTap,
-  });
-  final bool faceUp, removed;
-  final FlipSymbol symbol;
-  final double size;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  State<_Token> createState() => _TokenState();
-}
-
-class _TokenState extends State<_Token> with SingleTickerProviderStateMixin {
-  late final AnimationController _flip = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 320),
-    value: widget.faceUp ? 1 : 0,
-  );
-  bool _pressed = false;
-
-  @override
-  void didUpdateWidget(_Token old) {
-    super.didUpdateWidget(old);
-    if (widget.faceUp != old.faceUp) {
-      final reduce = MediaQuery.disableAnimationsOf(context);
-      if (reduce) {
-        _flip.value = widget.faceUp ? 1 : 0;
-      } else {
-        widget.faceUp ? _flip.forward() : _flip.reverse();
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _flip.dispose();
-    super.dispose();
-  }
-
-  Widget _back() => _disc(
-    gradient: const RadialGradient(
-      center: Alignment(-.3, -.4),
-      colors: [_tokenLight, _tokenDark],
-    ),
-    ring: const Color(0xFFC9AEFF),
-    child: Text(
-      '?',
-      style: TextStyle(
-        fontSize: widget.size * .52,
-        fontWeight: FontWeight.w900,
-        color: Colors.white,
-        height: 1,
-      ),
-    ),
-  );
-
-  Widget _front() => _disc(
-    gradient: const RadialGradient(
-      center: Alignment(-.3, -.4),
-      colors: [Colors.white, _cream],
-    ),
-    ring: const Color(0xFFFFD27A),
-    child: Text(
-      widget.symbol.emoji,
-      style: TextStyle(fontSize: widget.size * .55, height: 1),
-    ),
-  );
-
-  Widget _disc({
-    required Gradient gradient,
-    required Color ring,
-    required Widget child,
-  }) => Container(
-    width: widget.size * .9,
-    height: widget.size * .9,
-    alignment: Alignment.center,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      gradient: gradient,
-      border: Border.all(color: ring, width: 2),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x66000000),
-          blurRadius: 4,
-          offset: Offset(0, 3),
-        ),
-      ],
-    ),
-    child: child,
-  );
-
-  @override
-  Widget build(BuildContext context) {
-    final reduce = MediaQuery.disableAnimationsOf(context);
-    return IgnorePointer(
-      ignoring: widget.removed,
-      child: AnimatedScale(
-        scale: widget.removed ? 0 : (_pressed ? .9 : 1),
-        duration: Duration(
-          milliseconds: reduce ? 0 : (widget.removed ? 260 : 90),
-        ),
-        curve: widget.removed ? Curves.easeInBack : Curves.easeOut,
-        child: Semantics(
-          button: true,
-          label: widget.faceUp
-              ? '${widget.label}: ${widget.symbol.name}'
-              : '${widget.label}, face down',
-          excludeSemantics: true,
-          onTap: widget.onTap,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapDown: (_) => setState(() => _pressed = true),
-            onTapCancel: () => setState(() => _pressed = false),
-            onTapUp: (_) => setState(() => _pressed = false),
-            onTap: widget.onTap,
-            // The whole slot is the tap target; the disc is a little smaller.
-            child: SizedBox(
-              width: widget.size,
-              height: widget.size,
-              child: Center(
-                child: AnimatedBuilder(
-                  animation: _flip,
-                  builder: (context, _) {
-                    final v = _flip.value;
-                    final showFront = v > .5;
-                    return Transform(
-                      alignment: Alignment.center,
-                      transform: Matrix4.identity()
-                        ..setEntry(3, 2, .0015) // perspective
-                        ..rotateY(pi * v),
-                      child: showFront
-                          // Mirror the front so it reads correctly after the turn.
-                          ? Transform(
-                              alignment: Alignment.center,
-                              transform: Matrix4.identity()..rotateY(pi),
-                              child: _front(),
-                            )
-                          : _back(),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A short burst of coloured dots from each matched tile.
-class _BurstView extends StatefulWidget {
-  const _BurstView({
-    super.key,
-    required this.centers,
-    required this.radius,
-    required this.onDone,
-  });
-  final List<Offset> centers;
-  final double radius;
-  final VoidCallback onDone;
-
-  @override
-  State<_BurstView> createState() => _BurstViewState();
-}
-
-class _BurstViewState extends State<_BurstView>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 700),
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    _c.addStatusListener((s) {
-      if (s == AnimationStatus.completed) widget.onDone();
-    });
-    _c.forward();
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (MediaQuery.disableAnimationsOf(context)) return const SizedBox();
-    return AnimatedBuilder(
-      animation: _c,
-      builder: (context, _) => CustomPaint(
-        painter: _BurstPainter(widget.centers, widget.radius, _c.value),
-      ),
-    );
-  }
-}
-
-class _BurstPainter extends CustomPainter {
-  _BurstPainter(this.centers, this.radius, this.t);
-  final List<Offset> centers;
-  final double radius, t;
-  static const _colors = [
-    Color(0xFFFFD27A),
-    Color(0xFFFF8D9B),
-    Color(0xFF7AA9FF),
-    Color(0xFFFFFFFF),
-  ];
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final ease = Curves.easeOutCubic.transform(t);
-    for (final c in centers) {
-      for (var k = 0; k < 10; k++) {
-        final a = k * 2 * pi / 10;
-        final p = c + Offset(cos(a), sin(a)) * (radius * ease);
-        canvas.drawCircle(
-          p,
-          (1 - t) * 4 + .5,
-          Paint()..color = _colors[k % _colors.length].withValues(alpha: 1 - t),
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(_BurstPainter old) => old.t != t;
 }

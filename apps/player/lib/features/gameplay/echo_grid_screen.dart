@@ -13,6 +13,7 @@ import '../../core/game_kind.dart';
 import '../catalog/game_settings_screen.dart';
 import 'echo_setup_screen.dart';
 import 'game_header.dart';
+import 'nova_board.dart';
 import 'round_journey.dart';
 import 'match_board.dart';
 import '../../game/rules/difficulty.dart';
@@ -418,13 +419,17 @@ class _EchoGridScreenState extends State<EchoGridScreen> {
       const SizedBox(height: 10),
     ],
     boardSurface(
-      GridView.count(
-        crossAxisCount: puzzle.config.size,
-        mainAxisSpacing: 6,
-        crossAxisSpacing: 6,
-        padding: EdgeInsets.zero,
-        physics: const NeverScrollableScrollPhysics(),
-        children: [for (var i = 0; i < puzzle.config.cells; i++) cell(i)],
+      NovaBoardFrame(
+        padding: const EdgeInsets.all(8),
+        radius: 22,
+        child: GridView.count(
+          crossAxisCount: puzzle.config.size,
+          mainAxisSpacing: 6,
+          crossAxisSpacing: 6,
+          padding: EdgeInsets.zero,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [for (var i = 0; i < puzzle.config.cells; i++) cell(i)],
+        ),
       ),
     ),
     if (phase == _Phase.preview && player.previewSeconds == 0) ...[

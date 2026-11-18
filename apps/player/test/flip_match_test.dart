@@ -83,7 +83,10 @@ void main() {
     await t.tap(find.byKey(Key('card-$third')));
     await t.pump();
     expect(find.text(flipSymbols[p.cards[third]].emoji), findsNothing);
-    await t.pump(const Duration(milliseconds: 900));
+    await t.pump(
+      const Duration(milliseconds: 900),
+    ); // timer fires, tiles flip back
+    await t.pump(const Duration(milliseconds: 500)); // the 3D turn finishes
     expect(find.text(flipSymbols[p.cards[0]].emoji), findsNothing);
 
     // then solve every pair

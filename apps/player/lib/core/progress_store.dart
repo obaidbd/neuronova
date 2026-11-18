@@ -45,6 +45,11 @@ class ProgressStore {
     return value < 1 ? 1 : value;
   }
 
+  /// Flip Duel: how many friends share the device (2 to 4).
+  int get duelPlayers => (_prefs.getInt('duel_players') ?? 2).clamp(2, 4);
+  Future<void> setDuelPlayers(int n) =>
+      _prefs.setInt('duel_players', n.clamp(2, 4));
+
   int pointsFor(String game) => _prefs.getInt('points_$game') ?? 0;
   int xpFor(String game) => _prefs.getInt('xp_$game') ?? 0;
   int roundsFor(String game) => _prefs.getInt('rounds_$game') ?? 0;
