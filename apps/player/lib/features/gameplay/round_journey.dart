@@ -43,6 +43,11 @@ String roundTip(GameKind kind, int round) {
       'Say each picture to yourself as you flip it.',
       'Remember the corners and edges first.',
     ],
+    GameKind.flipDuel => [
+      'Remember what your opponent flips too.',
+      'Flip an unseen tile first, then use what you know.',
+      'A tile you have seen twice is a free pair.',
+    ],
   };
   return tips[round % tips.length];
 }

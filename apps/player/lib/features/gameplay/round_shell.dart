@@ -143,7 +143,8 @@ class _RoundShellState extends State<RoundShell> {
         final result = p.evaluate(mistakes: succeeds ? p.pairs ~/ 4 : p.pairs);
         return RoundOutcome(accuracy: result.accuracy, perfect: result.perfect);
       case GameKind.echoGrid:
-        throw StateError('Echo Grid has its own screen');
+      case GameKind.flipDuel:
+        throw StateError('${widget.kind.title} has its own screen');
     }
     return RoundOutcome(accuracy: correct ? 1 : 0, perfect: correct);
   }
@@ -356,7 +357,8 @@ class _RoundShellState extends State<RoundShell> {
           onFinished: _finish,
         );
       case GameKind.echoGrid:
-        throw StateError('Echo Grid has its own screen');
+      case GameKind.flipDuel:
+        throw StateError('${widget.kind.title} has its own screen');
     }
   }
 

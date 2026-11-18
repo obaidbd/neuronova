@@ -9,7 +9,9 @@ import 'package:neuronova_player/game/rules/number_forge.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  for (final kind in GameKind.values.where((k) => k != GameKind.echoGrid)) {
+  for (final kind in GameKind.values.where(
+    (k) => k != GameKind.echoGrid && k != GameKind.flipDuel,
+  )) {
     testWidgets('${kind.title} renders at every tier without errors', (
       t,
     ) async {

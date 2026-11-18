@@ -36,13 +36,13 @@ Open https://neuronova.muslimit.net/. The `Deploy web to neuronova.muslimit.net`
 
 ## Flip Duel (two players or vs AI)
 
-A shared 6 × 6 green board of 18 fruit / animal pairs with purple "?" tokens. Open it from the wide **Flip Duel** card under the game grid. Tap two tokens per turn; a match removes the pair, scores +1 and keeps the turn, a miss shows both tokens for one second and passes the turn. The game ends when every pair is gone and the higher score wins (equal scores are a draw).
+The eighth card in the home grid. A shared 6 × 6 green board of 18 fruit / animal pairs with purple "?" tokens. Tap two tokens per turn; a match removes the pair, scores +1 and keeps the turn, a miss shows both tokens for one second and passes the turn. The game ends when every pair is gone and the higher score wins (equal scores are a draw).
 
-- **Modes:** *vs AI* (Easy / Medium / Hard) or *2 Players* on one device. The bot only knows tiles it has actually seen flipped and forgets some of them (Easy remembers 30%, Medium 65%, Hard everything); it finishes a pair when it remembers both halves.
-- **Header:** both scores, a turn indicator, mode and difficulty selectors, sound toggle and Restart. The board is sized to fit a portrait phone without scrolling.
-- **Feel:** 3D flip animation, tap bounce, haptic ticks, a particle burst on matches, shrink-away removal. Reduced motion is respected.
+- **Same look and system as the other games:** the shared header (game icon, points | round | level, level bar, Settings), the same Settings screen (Difficulty Auto / Easy / Normal / Hard sets the bot), and the same points and endless level system. A finished game **against the AI** earns 0-10 points by your share of the pairs and a level-up for a win; **Auto** difficulty follows your level (low levels meet an easy bot, higher levels a perfect memory). Two-player games never change saved progress.
+- **Modes:** *vs AI* (Easy / Medium / Hard) or *2 Players* on one device, switchable on the screen. The bot only knows tiles it has actually seen flipped and forgets some of them (Easy remembers 30%, Medium 65%, Hard everything); it finishes a pair when it remembers both halves.
+- **On screen:** both scores, a turn indicator, mode and difficulty selectors, sound toggle and Restart. The board is sized to fit a portrait phone without scrolling.
+- **Feel:** 3D flip animation, tap bounce, haptic ticks, a particle burst on matches, shrink-away removal, points counting up in the header. Reduced motion is respected.
 - **Sound:** flip, match, mismatch and win effects are synthesized with the Web Audio API in code (no audio files). Mobile builds and tests are silent for now.
-- Flip Duel does not touch the adaptive levels or saved points of the other games.
 
 ## Echo Grid local matches
 

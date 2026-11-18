@@ -21,6 +21,7 @@ class GameHeader extends StatelessWidget implements PreferredSizeWidget {
     this.animate = false,
     this.gain,
     this.gainKey,
+    this.extraActions = const [],
   });
   final GameKind kind;
   final int points, round, level;
@@ -38,6 +39,9 @@ class GameHeader extends StatelessWidget implements PreferredSizeWidget {
   /// differ for every round so the pop plays again.
   final int? gain;
   final Object? gainKey;
+
+  /// Extra icon buttons shown before the settings button (e.g. sound).
+  final List<Widget> extraActions;
 
   @override
   Size get preferredSize => const Size.fromHeight(57);
@@ -169,6 +173,7 @@ class GameHeader extends StatelessWidget implements PreferredSizeWidget {
       ),
     ),
     actions: [
+      ...extraActions,
       if (showSettings)
         SizedBox(
           width: 44,

@@ -5,7 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../app/theme.dart';
+import '../../core/game_kind.dart';
+import '../../core/progress_store.dart';
 import '../../core/sfx.dart';
+import '../../game/rules/adaptive.dart';
+import '../../game/rules/scoring.dart';
+import '../catalog/game_presentation.dart';
+import '../catalog/game_settings_screen.dart';
+import '../gameplay/game_header.dart';
 import '../../game/rules/flip_duel.dart';
 import '../../game/rules/flip_match.dart';
 
@@ -25,14 +32,18 @@ const _cream = Color(0xFFFFF8E7);
 class FlipDuelScreen extends StatefulWidget {
   const FlipDuelScreen({
     super.key,
+    required this.store,
     this.mode = DuelMode.vsAi,
-    this.level = BotLevel.medium,
+    this.level,
     this.seed,
     this.sfx,
     this.botRng,
   });
+  final ProgressStore store;
   final DuelMode mode;
-  final BotLevel level;
+
+  /// Bot difficulty; from the game's settings (or the player's level) if null.
+  final BotLevel? level;
 
   /// Fixed deal (tests); random when null.
   final int? seed;
@@ -55,7 +66,14 @@ class _Burst {
 
 class _FlipDuelScreenState extends State<FlipDuelScreen> {
   late DuelMode mode = widget.mode;
-  late BotLevel level = widget.level;
+  late BotLevel level = widget.level ?? _levelFromSettings();
+  BotLevel _levelFromSettings() {
+    final key = GameKind.flipDuel.skillKey;
+    return botLevelForTier(
+      widget.store.practiceTierFor(key) ?? widget.store.levelFor(key),
+    );
+  }
+
   late final Sfx sfx = widget.sfx ?? createSfx();
   late DuelGame game;
   late DuelBot bot;
@@ -66,6 +84,11 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
 
   /// Input is ignored while a result is showing or the bot is playing.
   bool locked = false;
+
+  /// Points just earned from a finished game against the AI (header pop).
+  int? gain;
+  late String roundId;
+  bool committed = false;
 
   bool get botTurn => mode == DuelMode.vsAi && game.turn == 1 && !game.over;
 
@@ -85,6 +108,9 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
   void _newGame([int? seed]) {
     _timer?.cancel();
     game = DuelGame(seed: seed);
+    roundId = '${DateTime.now().microsecondsSinceEpoch}-${game.hashCode}';
+    committed = false;
+    gain = null;
     bot = DuelBot(level, rng: widget.botRng);
     locked = false;
     bursts.clear();
@@ -144,9 +170,33 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
     if (game.over) {
       _play(sfx.win);
       HapticFeedback.mediumImpact();
+      _commit();
       return;
     }
     _maybeBot(); // a match keeps the turn
+  }
+
+  /// A finished game against the AI feeds the same points / level system as
+  /// the other games: 0-10 points by your share of the pairs, and a level-up
+  /// for a win. Two-player games never touch saved progress.
+  Future<void> _commit() async {
+    if (mode != DuelMode.vsAi || committed) return;
+    committed = true;
+    final key = GameKind.flipDuel.skillKey;
+    final mine = game.scores[0];
+    final won = game.winner == 0;
+    final points = (maxRoundScore * mine / DuelGame.pairs).round();
+    final skill = widget.store.skillFor(key);
+    skill.record(RoundRecord(accuracy: mine / DuelGame.pairs, success: won));
+    await widget.store.commitRound(
+      roundId: roundId,
+      score: points,
+      xp: 0,
+      skill: skill,
+      skillKey: key,
+      levelUp: won,
+    );
+    if (mounted) setState(() => gain = points);
   }
 
   void _finishMiss() {
@@ -172,6 +222,33 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
     });
   }
 
+  Future<void> _openSettings() async {
+    _timer?.cancel();
+    locked = true; // freeze the board while settings are open
+    await Navigator.of(context).push<GameSettingsAction>(
+      MaterialPageRoute(
+        builder: (_) =>
+            GameSettingsScreen(kind: GameKind.flipDuel, store: widget.store),
+      ),
+    );
+    if (!mounted) return;
+    final before = level;
+    level = _levelFromSettings();
+    if (level != before) {
+      _newGame(); // a new difficulty starts a fresh game
+      return;
+    }
+    // Same difficulty: carry on exactly where the game was paused.
+    locked = false;
+    if (game.pendingPair != null) {
+      _finishMatch();
+    } else if (game.busy) {
+      _finishMiss();
+    } else {
+      _maybeBot();
+    }
+  }
+
   void _setMode(DuelMode m) {
     if (m == mode) return;
     mode = m;
@@ -189,22 +266,30 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 48,
-        title: const Text('Flip Duel', style: TextStyle(fontSize: 18)),
-        actions: [
+      appBar: GameHeader(
+        kind: GameKind.flipDuel,
+        points: widget.store.pointsFor(GameKind.flipDuel.skillKey),
+        round: widget.store.roundsFor(GameKind.flipDuel.skillKey) + 1,
+        level: widget.store.levelFor(GameKind.flipDuel.skillKey),
+        difficulty: mode == DuelMode.vsAi ? level.label : '2 players',
+        onSettings: _openSettings,
+        animate: true,
+        gain: gain,
+        gainKey: roundId,
+        extraActions: [
           IconButton(
             key: const Key('duel-sound'),
             tooltip: muted ? 'Sound off' : 'Sound on',
             icon: Icon(
               muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+              size: 23,
             ),
             onPressed: () => setState(() => muted = !muted),
           ),
           IconButton(
             key: const Key('duel-restart'),
             tooltip: 'Restart',
-            icon: const Icon(Icons.refresh_rounded),
+            icon: const Icon(Icons.refresh_rounded, size: 23),
             onPressed: () => _newGame(),
           ),
         ],
@@ -394,8 +479,12 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
     },
   );
 
+  /// Board padding and gap; tighter on very small screens so tiles stay big.
+  (double, double) _metrics(double side) =>
+      side < 300 ? (7.0, 4.0) : (10.0, 6.0);
+
   Widget _board(double side) {
-    const pad = 10.0, gap = 6.0;
+    final (pad, gap) = _metrics(side);
     final cell = (side - pad * 2 - gap * (DuelGame.cols - 1)) / DuelGame.cols;
     return Container(
       key: const Key('duel-board'),
@@ -418,16 +507,16 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
       child: Stack(
         children: [
           Padding(
-            padding: const EdgeInsets.all(pad),
+            padding: EdgeInsets.all(pad),
             child: Column(
               children: [
                 for (var r = 0; r < DuelGame.cols; r++) ...[
-                  if (r > 0) const SizedBox(height: gap),
+                  if (r > 0) SizedBox(height: gap),
                   Expanded(
                     child: Row(
                       children: [
                         for (var col = 0; col < DuelGame.cols; col++) ...[
-                          if (col > 0) const SizedBox(width: gap),
+                          if (col > 0) SizedBox(width: gap),
                           Expanded(child: _slot(r * DuelGame.cols + col)),
                         ],
                       ],
@@ -461,7 +550,7 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
   double _side = 300;
 
   void _addBurst((int, int) pair) {
-    const pad = 10.0, gap = 6.0;
+    final (pad, gap) = _metrics(_side);
     final cell = (_side - pad * 2 - gap * (DuelGame.cols - 1)) / DuelGame.cols;
     Offset centerOf(int i) => Offset(
       pad + (i % DuelGame.cols) * (cell + gap) + cell / 2,
@@ -558,6 +647,19 @@ class _FlipDuelScreenState extends State<FlipDuelScreen> {
                 fontWeight: FontWeight.w800,
               ),
             ),
+            if (gain != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  '+$gain points',
+                  key: const Key('duel-gain'),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: GameKind.flipDuel.accent,
+                  ),
+                ),
+              ),
             const SizedBox(height: 16),
             FilledButton.icon(
               key: const Key('duel-play-again'),

@@ -8,6 +8,7 @@ enum GameKind {
   wordQuest,
   pathRecall,
   flipMatch,
+  flipDuel,
 }
 
 extension GameKindInfo on GameKind {
@@ -19,6 +20,7 @@ extension GameKindInfo on GameKind {
     GameKind.wordQuest => 'Word Quest',
     GameKind.pathRecall => 'Path Recall',
     GameKind.flipMatch => 'Flip Match',
+    GameKind.flipDuel => 'Flip Duel',
   };
   String get blurb => switch (this) {
     GameKind.echoGrid => 'Visual memory',
@@ -28,6 +30,7 @@ extension GameKindInfo on GameKind {
     GameKind.wordQuest => 'Words (EN · বাংলা · العربية)',
     GameKind.pathRecall => 'Spatial memory',
     GameKind.flipMatch => 'Pairs & memory',
+    GameKind.flipDuel => 'Memory duel',
   };
   String get skillKey => switch (this) {
     GameKind.echoGrid => 'visual_memory',
@@ -37,6 +40,7 @@ extension GameKindInfo on GameKind {
     GameKind.wordQuest => 'vocabulary',
     GameKind.pathRecall => 'spatial_memory',
     GameKind.flipMatch => 'pair_memory',
+    GameKind.flipDuel => 'duel_memory',
   };
   IconData get icon => switch (this) {
     GameKind.echoGrid => Icons.grid_view,
@@ -46,6 +50,7 @@ extension GameKindInfo on GameKind {
     GameKind.wordQuest => Icons.translate,
     GameKind.pathRecall => Icons.route,
     GameKind.flipMatch => Icons.flip,
+    GameKind.flipDuel => Icons.people_alt_rounded,
   };
 
   /// Target completion time used by the timed score's speed factor.
@@ -57,5 +62,6 @@ extension GameKindInfo on GameKind {
     GameKind.wordQuest => 5000 + tier * 300,
     GameKind.pathRecall => 8000 + tier * 1200,
     GameKind.flipMatch => 15000 + tier * 3000,
+    GameKind.flipDuel => 60000,
   };
 }

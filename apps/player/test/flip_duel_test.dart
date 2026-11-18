@@ -2,7 +2,10 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:neuronova_player/core/game_kind.dart';
+import 'package:neuronova_player/core/progress_store.dart';
 import 'package:neuronova_player/core/sfx.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:neuronova_player/features/duel/flip_duel_screen.dart';
 import 'package:neuronova_player/game/rules/flip_duel.dart';
 
@@ -173,6 +176,7 @@ void main() {
   });
 
   group('screen', () {
+    late ProgressStore store;
     Future<void> open(
       WidgetTester t, {
       DuelMode mode = DuelMode.twoPlayers,
@@ -183,9 +187,12 @@ void main() {
       t.view.physicalSize = size;
       t.view.devicePixelRatio = 1;
       addTearDown(t.view.reset);
+      SharedPreferences.setMockInitialValues({});
+      store = await ProgressStore.open();
       await t.pumpWidget(
         MaterialApp(
           home: FlipDuelScreen(
+            store: store,
             mode: mode,
             seed: seed,
             sfx: sfx ?? SilentSfx(),
@@ -339,5 +346,84 @@ void main() {
         await t.pumpWidget(const SizedBox());
       },
     );
+
+    Future<void> playAllPairs(WidgetTester t, DuelGame g) async {
+      for (var i = 0; i < 36; i++) {
+        final p = partner(g, i);
+        if (p < i) continue;
+        await t.tap(find.byKey(Key('duel-token-$i')));
+        await t.pump(const Duration(milliseconds: 50));
+        await t.tap(find.byKey(Key('duel-token-$p')));
+        await t.pump(const Duration(milliseconds: 800));
+      }
+    }
+
+    testWidgets('vs AI: a win feeds the shared points, level and header', (
+      t,
+    ) async {
+      await open(t, mode: DuelMode.vsAi);
+      final key = GameKind.flipDuel.skillKey;
+      expect(store.pointsFor(key), 0);
+      expect(find.byKey(const Key('game-score-bar')), findsOneWidget);
+      expect(find.byKey(const Key('game-settings')), findsOneWidget);
+      await playAllPairs(t, DuelGame(seed: 11));
+      await t.pump(const Duration(seconds: 1));
+      expect(find.text('You win!'), findsOneWidget);
+      expect(store.pointsFor(key), 10); // all 18 pairs = 10 points
+      expect(store.roundsFor(key), 1);
+      expect(store.levelFor(key), 2); // a win raises the level
+      expect(text(t, 'game-total-score'), '10'); // the shared header counted up
+      expect(text(t, 'duel-gain'), '+10 points');
+      expect(find.text('R2'), findsOneWidget);
+      expect(find.text('Lv2'), findsOneWidget);
+      await t.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('two players: a finished game saves nothing', (t) async {
+      await open(t);
+      await playAllPairs(t, DuelGame(seed: 11));
+      await t.pump(const Duration(seconds: 1));
+      expect(find.text('Player 1 wins!'), findsOneWidget);
+      final key = GameKind.flipDuel.skillKey;
+      expect(store.pointsFor(key), 0);
+      expect(store.roundsFor(key), 0);
+      expect(find.byKey(const Key('duel-gain')), findsNothing);
+      await t.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('shared settings: no timer or seat options; difficulty sets '
+        'the bot', (t) async {
+      await open(t, mode: DuelMode.vsAi);
+      expect(
+        t
+            .widget<SegmentedButton<BotLevel>>(
+              find.byKey(const Key('duel-level')),
+            )
+            .selected,
+        {BotLevel.easy}, // a new player's level 1 meets the easy bot
+      );
+      await t.tap(find.byKey(const Key('game-settings')));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('game-untimed')), findsNothing);
+      expect(find.byKey(const Key('match-settings')), findsNothing);
+      await t.tap(find.byKey(const Key('game-difficulty')));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Hard').last);
+      await t.pumpAndSettle();
+      final save = find.byKey(const Key('save-game-settings'));
+      await t.ensureVisible(save);
+      await t.tap(save);
+      await t.pumpAndSettle();
+      expect(
+        t
+            .widget<SegmentedButton<BotLevel>>(
+              find.byKey(const Key('duel-level')),
+            )
+            .selected,
+        {BotLevel.hard},
+      );
+      expect(text(t, 'duel-turn'), 'You: flip a tile'); // fresh game
+      await t.pumpWidget(const SizedBox());
+    });
   });
 }

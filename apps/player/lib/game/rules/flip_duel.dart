@@ -8,6 +8,14 @@ import 'flip_match.dart';
 /// How the bot's memory behaves.
 enum BotLevel { easy, medium, hard }
 
+/// Practice difficulty (Easy 2, Normal 5, Hard 8) or the player's level when
+/// on Auto: low levels meet an easy bot, high levels a perfect memory.
+BotLevel botLevelForTier(int tier) => tier <= 3
+    ? BotLevel.easy
+    : tier <= 6
+    ? BotLevel.medium
+    : BotLevel.hard;
+
 extension BotLevelInfo on BotLevel {
   String get label => switch (this) {
     BotLevel.easy => 'Easy',

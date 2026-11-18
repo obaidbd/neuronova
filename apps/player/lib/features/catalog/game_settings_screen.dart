@@ -141,93 +141,97 @@ class _GameSettingsScreenState extends State<GameSettingsScreen> {
                       ),
                     ),
                   ),
-                const SizedBox(height: 12),
-                Material(
-                  color: Colors.transparent,
-                  child: SwitchListTile(
-                    key: const Key('game-untimed'),
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Relaxed scoring'),
-                    subtitle: const Text('No speed bonus'),
-                    value: untimed,
-                    onChanged: busy
-                        ? null
-                        : (value) => setState(() => untimed = value),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<bool>(
-                  key: const Key('game-turn-change'),
-                  initialValue: autoHandoff,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Multiplayer turn change',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: true, child: Text('Automatic')),
-                    DropdownMenuItem(
-                      value: false,
-                      child: Text('Tap Next player'),
-                    ),
-                  ],
-                  onChanged: busy
-                      ? null
-                      : (value) => setState(() => autoHandoff = value ?? true),
-                ),
-                const Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: Text(
-                    'The next player presses Start when ready.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: NovaColors.textSecondary,
-                    ),
-                  ),
-                ),
-                if (game == GameKind.echoGrid ||
-                    game == GameKind.pathRecall) ...[
+                // Flip Duel has no timer, turn handoff or seat setup.
+                if (game != GameKind.flipDuel) ...[
                   const SizedBox(height: 12),
-                  Text(
-                    'Preview time · ${previewSeconds}s',
-                    style: const TextStyle(color: NovaColors.textSecondary),
+                  Material(
+                    color: Colors.transparent,
+                    child: SwitchListTile(
+                      key: const Key('game-untimed'),
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Relaxed scoring'),
+                      subtitle: const Text('No speed bonus'),
+                      value: untimed,
+                      onChanged: busy
+                          ? null
+                          : (value) => setState(() => untimed = value),
+                    ),
                   ),
-                  Slider(
-                    key: const Key('solo-preview'),
-                    min: 0,
-                    max: 15,
-                    divisions: 15,
-                    value: previewSeconds.toDouble(),
-                    label: '${previewSeconds}s',
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<bool>(
+                    key: const Key('game-turn-change'),
+                    initialValue: autoHandoff,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Multiplayer turn change',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: true, child: Text('Automatic')),
+                      DropdownMenuItem(
+                        value: false,
+                        child: Text('Tap Next player'),
+                      ),
+                    ],
                     onChanged: busy
                         ? null
                         : (value) =>
-                              setState(() => previewSeconds = value.round()),
+                              setState(() => autoHandoff = value ?? true),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Text(
+                      'The next player presses Start when ready.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: NovaColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  if (game == GameKind.echoGrid ||
+                      game == GameKind.pathRecall) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      'Preview time · ${previewSeconds}s',
+                      style: const TextStyle(color: NovaColors.textSecondary),
+                    ),
+                    Slider(
+                      key: const Key('solo-preview'),
+                      min: 0,
+                      max: 15,
+                      divisions: 15,
+                      value: previewSeconds.toDouble(),
+                      label: '${previewSeconds}s',
+                      onChanged: busy
+                          ? null
+                          : (value) =>
+                                setState(() => previewSeconds = value.round()),
+                    ),
+                    const Text(
+                      '0 = wait until you press Start',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: NovaColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                  OutlinedButton.icon(
+                    key: const Key('match-settings'),
+                    onPressed: busy
+                        ? null
+                        : () => save(GameSettingsAction.matchSetup),
+                    icon: const Icon(Icons.group_outlined),
+                    label: const Text('Players & rounds'),
                   ),
                   const Text(
-                    '0 = wait until you press Start',
+                    'Start a new match',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 12,
                       color: NovaColors.textSecondary,
                     ),
                   ),
                 ],
-                OutlinedButton.icon(
-                  key: const Key('match-settings'),
-                  onPressed: busy
-                      ? null
-                      : () => save(GameSettingsAction.matchSetup),
-                  icon: const Icon(Icons.group_outlined),
-                  label: const Text('Players & rounds'),
-                ),
-                const Text(
-                  'Start a new match',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: NovaColors.textSecondary,
-                  ),
-                ),
                 const SizedBox(height: 12),
                 const Divider(height: 1),
                 ExpansionTile(
